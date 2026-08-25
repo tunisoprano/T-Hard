@@ -23,13 +23,48 @@ class ChatController extends Controller
 
         $user = User::findOrFail($data['user_id']);
 
+        // 1. İlgili kullanıcı ve mağaza (veya platform geneli) için aktif bir oturum bul veya oluştur
+        // (Eğer son 1 saat içinde mesajlaşmışsa aynı oturumdan devam et, yoksa yeni oluştur)
+        $session = \App\Models\ChatSession::firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'store_id' => $data['store_id'] ?? null,
+            ]
+        );
+
+        // 2. Kullanıcının yeni mesajını veritabanına kaydet
+        $session->messages()->create([
+            'role' => 'user',
+            'content' => $data['message']
+        ]);
+
+        // 3. System prompt'unu her zamanki gibi dinamik olarak oluştur (katalog vs. güncel kalsın diye)
         $systemPrompt = isset($data['store_id'])
             ? $this->buildStorePrompt(Store::findOrFail($data['store_id']), $user)
             : $this->buildPersonalPrompt($user);
 
-        $reply = $this->ollama->chat([
-            ['role' => 'system', 'content' => $systemPrompt],
-            ['role' => 'user', 'content' => $data['message']],
+        // 4. Ollama'ya gidecek mesaj listesini hazırla
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt]
+        ];
+
+        // 5. Veritabanındaki eski mesajları sırasıyla listeye ekle (Burası işin kalbi!)
+        // Sadece son 10 mesajı alalım ki modelin kafası ve token limiti dolmasın
+        $history = $session->messages()->latest()->take(10)->get()->reverse();
+        foreach ($history as $msg) {
+            $messages[] = [
+                'role' => $msg->role,
+                'content' => $msg->content
+            ];
+        }
+
+        // 6. Ollama'ya sor
+        $reply = $this->ollama->chat($messages);
+
+        // 7. Gelen cevabı veritabanına kaydet
+        $session->messages()->create([
+            'role' => 'assistant',
+            'content' => $reply
         ]);
 
         return response()->json(['reply' => $reply]);
