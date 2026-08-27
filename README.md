@@ -1,58 +1,137 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# T-Hard — Mağazalar Arası Ürün Öneri Sistemi
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Çok mağazalı (multi-tenant) bir e-ticaret platformu için, kullanıcının geçmiş
+satın alma davranışına göre **farklı mağazalardan** ürün öneren bir yapay
+zeka sistemi. Örnek senaryo: bir kullanıcı Mağaza A'dan pantolon aldıysa,
+Mağaza B'nin pantolonları da ona önerilebilsin.
 
-## About Laravel
+Bu proje bir staj görevi kapsamında geliştirilmiş bir **prototiptir**.
+Kullanılan tüm veri (kullanıcı, sipariş, ürün) sentetiktir — gerçek müşteri
+verisi içermez.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Nasıl çalışıyor
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+┌─────────────┐      ┌──────────────────┐      ┌─────────────────────┐
+│  order_items │ ──▶  │  Python (implicit) │ ──▶ │  recommendations tbl │
+│  (Postgres)  │      │  ALS + kategori    │      │  (user, store, ürün, │
+│              │      │  hibrit skorlama   │      │   skor, sıra)        │
+└─────────────┘      └──────────────────┘      └─────────────────────┘
+                                                          │
+                                                          ▼
+┌─────────────┐      ┌──────────────────┐      ┌─────────────────────┐
+│   Web UI     │ ◀──  │   Laravel API     │ ◀──  │  Ollama (qwen2.5)    │
+│ (chat/mağaza)│      │  (REST + chatbot) │      │  lokal LLM           │
+└─────────────┘      └──────────────────┘      └─────────────────────┘
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+1. **Veri modeli** (Laravel + PostgreSQL): mağazalar, kategoriler, her
+   mağazaya ait ürünler, kullanıcılar (bir "ana mağazaları" var ama diğer
+   mağazalardan da alışveriş yapabiliyorlar) ve siparişler.
+2. **Öneri motoru** (`recommender/`, Python): `implicit` kütüphanesiyle
+   collaborative filtering (ALS) modeli eğitilir. Kullanıcının geçmiş
+   kategori tercihi de skora eklenerek hibrit bir sıralama üretilir, sonuç
+   her (kullanıcı, mağaza) çifti için ayrı ayrı `recommendations`
+   tablosuna yazılır.
+3. **API** (`routes/api.php`): kategori/mağaza/ürün/öneri/sipariş
+   endpoint'leri + chatbot endpoint'i.
+4. **Chatbot** (Ollama + Qwen2.5, lokal): gerçek veritabanı verisini
+   (katalog, öneriler, sipariş geçmişi) prompt'a gömüp modele "sadece bu
+   veriyi kullan, uydurma" diyen bir RAG yaklaşımı.
+5. **Web arayüzü**: platform geneli chatbot (`/chat`) ve her mağaza için
+   ayrı bir vitrin + mağaza-özel chatbot (`/magaza/{id}`).
 
-## Contributing
+## Ölçülen sonuçlar
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Kullanıcıların ilk 3 önerisinde doğru kategori isabet oranı: **%89–92**
+  (rastgele öneri yapılsaydı bu oran katalog dağılımına göre sadece %15
+  olurdu)
+- Önerilerin **%71'i** kullanıcının ana mağazası **dışından** geliyor —
+  hedeflenen çapraz-mağaza senaryosu çalışıyor
+- Detaylı analiz ve grafikler için: `recommender/train.ipynb`
 
-## Code of Conduct
+## Teknoloji yığını
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Katman | Teknoloji |
+|---|---|
+| Backend / API | Laravel 13, PostgreSQL 16 |
+| Öneri motoru | Python 3.12, `implicit` (ALS) |
+| Chatbot | Ollama, Qwen2.5 7B Instruct (tamamen lokal) |
+| Frontend | Saf HTML/CSS/vanilla JS (build adımı yok) |
+| Test | PHPUnit (26 test, SQLite in-memory) |
 
-## Security Vulnerabilities
+## Kurulum
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Ön koşullar: PHP 8.4+, Composer, Node.js, PostgreSQL 16, Python 3.12,
+[Ollama](https://ollama.com).
 
-## License
+```bash
+# Bağımlılıklar
+composer install
+npm install
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# .env dosyalarını hazırla
+cp .env.example .env
+php artisan key:generate
+cp recommender/.env.example recommender/.env   # DB bilgilerini gir
+
+# Veritabanı + sahte veri
+php artisan migrate:fresh --seed
+
+# Python ortamı ve öneri motoru
+cd recommender
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+OPENBLAS_NUM_THREADS=1 python train.py
+cd ..
+
+# Ollama modeli
+brew install ollama
+brew services start ollama
+ollama pull qwen2.5:7b-instruct
+
+# Siteyi bağla (Laravel Herd kullanıyorsan)
+herd link
+```
+
+## Kullanım
+
+- `http://<proje-adresi>/chat` — platform geneli, kişisel öneri chatbot'u
+- `http://<proje-adresi>/magaza/{1-4}` — mağaza vitrini + mağaza-özel
+  chatbot + seçili kullanıcının tüm mağazalardaki sipariş geçmişi
+
+Kullanıcı girişi (auth) henüz yok; sayfalardaki dropdown'dan "hangi
+kullanıcı olarak bakıyorsun" seçiliyor.
+
+## Öneri motorunu yeniden eğitme
+
+Veritabanı her `migrate:fresh --seed` sonrası ürün ID'leri değiştiği için
+öneri motorunun yeniden çalıştırılması gerekir:
+
+```bash
+php artisan recommender:train
+```
+
+Bu komut her gece 03:00'te otomatik olarak da çalışacak şekilde
+zamanlanmıştır (`routes/console.php`).
+
+## Test
+
+```bash
+php artisan test
+```
+
+## Bilinen sınırlamalar
+
+- Kullanılan veri tamamen sentetik/sahte, gerçek müşteri verisiyle henüz
+  test edilmedi
+- Örneklem küçük (150 kullanıcı)
+- Kimlik doğrulama (auth) yok
+- Chatbot şu an önerilerini "neden" verdiğini açıklayamıyor
+  (explainability) — planlanan bir sonraki adım
+
+## Sırada ne var
+
+- Streaming response (chatbot cevaplarının anlık akması)
+- Semantik arama (embedding tabanlı, kavramsal ürün arama)
