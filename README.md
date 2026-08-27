@@ -56,9 +56,10 @@ verisi içermez.
 |---|---|
 | Backend / API | Laravel 13, PostgreSQL 16 |
 | Öneri motoru | Python 3.12, `implicit` (ALS) |
-| Chatbot | Ollama, Qwen2.5 7B Instruct (tamamen lokal) |
+| Chatbot | Ollama, Qwen2.5 7B Instruct (tamamen lokal, streaming) |
+| Semantik arama | Ollama, bge-m3 embedding (1024 boyut, çok dilli) |
 | Frontend | Saf HTML/CSS/vanilla JS (build adımı yok) |
-| Test | PHPUnit (26 test, SQLite in-memory) |
+| Test | PHPUnit (29 test, SQLite in-memory) |
 
 ## Kurulum
 
@@ -86,10 +87,14 @@ pip install -r requirements.txt
 OPENBLAS_NUM_THREADS=1 python train.py
 cd ..
 
-# Ollama modeli
+# Ollama modelleri
 brew install ollama
 brew services start ollama
 ollama pull qwen2.5:7b-instruct
+ollama pull bge-m3
+
+# Ürünler için semantik arama embedding'lerini üret
+php artisan products:embed
 
 # Siteyi bağla (Laravel Herd kullanıyorsan)
 herd link
@@ -98,8 +103,10 @@ herd link
 ## Kullanım
 
 - `http://<proje-adresi>/chat` — platform geneli, kişisel öneri chatbot'u
+  (streaming cevap) + tüm mağazalarda semantik ürün arama
 - `http://<proje-adresi>/magaza/{1-4}` — mağaza vitrini + mağaza-özel
-  chatbot + seçili kullanıcının tüm mağazalardaki sipariş geçmişi
+  chatbot + seçili kullanıcının tüm mağazalardaki sipariş geçmişi + o
+  mağazaya özel semantik arama
 
 Kullanıcı girişi (auth) henüz yok; sayfalardaki dropdown'dan "hangi
 kullanıcı olarak bakıyorsun" seçiliyor.
@@ -130,8 +137,13 @@ php artisan test
 - Kimlik doğrulama (auth) yok
 - Chatbot şu an önerilerini "neden" verdiğini açıklayamıyor
   (explainability) — planlanan bir sonraki adım
+- Semantik arama, doğrudan/yakın kelime eşleşmelerinde (örn. "mont",
+  "spor ayakkabısı") çok güçlü; soyut/çok adımlı kavramsal sorgularda
+  (örn. "yazlık hafif kıyafet") tutarsız sonuçlar verebiliyor — küçük
+  yerel embedding modellerinin bilinen bir sınırı
 
 ## Sırada ne var
 
-- Streaming response (chatbot cevaplarının anlık akması)
-- Semantik arama (embedding tabanlı, kavramsal ürün arama)
+- Öneri açıklanabilirliği (explainability)
+- Ürün açıklamalarının (`description`) gerçekçi Türkçe metinle
+  değiştirilmesi (şu an Faker'ın anlamsız yer tutucu metni)

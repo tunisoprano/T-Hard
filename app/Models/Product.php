@@ -11,7 +11,11 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['store_id', 'category_id', 'name', 'description', 'price'];
+    protected $fillable = ['store_id', 'category_id', 'name', 'description', 'price', 'embedding'];
+
+    protected $casts = [
+        'embedding' => 'array',
+    ];
 
     public function store(): BelongsTo
     {

@@ -93,6 +93,27 @@
             cursor: pointer;
         }
         button:disabled { opacity: 0.5; cursor: default; }
+        .search-form { margin-top: 0; margin-bottom: 12px; }
+        .search-results {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .search-card {
+            background: #14161c;
+            border: 1px solid #2c2f38;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .search-card .info { font-size: 14px; }
+        .search-card .meta { font-size: 11px; color: #8a93a6; margin-top: 2px; }
+        .search-card .price { font-size: 14px; font-weight: 600; color: #6f8cff; white-space: nowrap; }
+        .search-empty { color: #8a93a6; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -105,6 +126,13 @@
                 @endforeach
             </select>
         </header>
+
+        <form id="searchForm" class="search-form">
+            <input type="text" id="searchInput" placeholder="Ürünlerde anlamına göre ara... (örn. 'kışlık bir şeyler')" autocomplete="off">
+            <button type="submit">Ara</button>
+            <button type="button" id="clearSearchButton" hidden>Kapat</button>
+        </form>
+        <div class="search-results" id="searchResults"></div>
 
         <div class="messages" id="messages"></div>
 
@@ -120,6 +148,78 @@
         const input = document.getElementById('messageInput');
         const userSelect = document.getElementById('userSelect');
         const sendButton = document.getElementById('sendButton');
+
+        // --- Semantik arama (tüm mağazalar) ---
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchButton = document.getElementById('clearSearchButton');
+        const searchResultsEl = document.getElementById('searchResults');
+
+        function renderSearchCard(product) {
+            const card = document.createElement('div');
+            card.className = 'search-card';
+
+            const info = document.createElement('div');
+            info.className = 'info';
+
+            const name = document.createElement('div');
+            name.textContent = product.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = product.category + ' · ' + product.store + ' · benzerlik: ' + product.score;
+
+            info.append(name, meta);
+
+            const price = document.createElement('div');
+            price.className = 'price';
+            price.textContent = product.price + ' TL';
+
+            card.append(info, price);
+            return card;
+        }
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const q = searchInput.value.trim();
+            if (!q) return;
+
+            searchResultsEl.textContent = '';
+            const loading = document.createElement('div');
+            loading.className = 'search-empty';
+            loading.textContent = 'Aranıyor...';
+            searchResultsEl.appendChild(loading);
+            clearSearchButton.hidden = false;
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+                const data = await response.json();
+
+                searchResultsEl.textContent = '';
+
+                if (!data.data.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'search-empty';
+                    empty.textContent = 'Sonuç bulunamadı.';
+                    searchResultsEl.appendChild(empty);
+                    return;
+                }
+
+                data.data.forEach(product => searchResultsEl.appendChild(renderSearchCard(product)));
+            } catch (err) {
+                searchResultsEl.textContent = '';
+                const errEl = document.createElement('div');
+                errEl.className = 'search-empty';
+                errEl.textContent = 'Arama başarısız: ' + err.message;
+                searchResultsEl.appendChild(errEl);
+            }
+        });
+
+        clearSearchButton.addEventListener('click', () => {
+            searchInput.value = '';
+            searchResultsEl.textContent = '';
+            clearSearchButton.hidden = true;
+        });
 
         function addMessage(text, role) {
             const div = document.createElement('div');

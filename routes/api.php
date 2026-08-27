@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RecommendationController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\UserOrderController;
 use Illuminate\Support\Facades\Route;
@@ -20,3 +21,5 @@ Route::get('users/{user}/recommendations', [RecommendationController::class, 'in
 Route::get('users/{user}/orders', [UserOrderController::class, 'index']);
 
 Route::post('chat', [ChatController::class, 'respond']);
+
+Route::get('search', [SearchController::class, 'index']);

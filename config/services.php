@@ -38,6 +38,7 @@ return [
     'ollama' => [
         'url' => env('OLLAMA_URL', 'http://localhost:11434'),
         'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct'),
+        'embedding_model' => env('OLLAMA_EMBEDDING_MODEL', 'bge-m3'),
     ],
 
 ];

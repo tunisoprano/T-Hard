@@ -72,6 +72,34 @@
         }
         .card .name { font-size: 14px; margin-bottom: 8px; }
         .card .price { font-size: 16px; font-weight: 600; color: #6f8cff; }
+        .card .meta { font-size: 11px; color: #8a93a6; margin-top: 4px; }
+        .search-form {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .search-form input {
+            flex: 1;
+            background: #1c1f26;
+            color: #e6e6e6;
+            border: 1px solid #2c2f38;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        .search-form button {
+            background: #3a5bfd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .search-form button#clearSearchButton {
+            background: #22252d;
+            color: #c4c9d4;
+        }
         .chat-panel {
             background: #14161c;
             border: 1px solid #2c2f38;
@@ -198,17 +226,30 @@
 
     <div class="layout">
         <main>
-            @foreach ($productsByCategory as $categoryName => $products)
-                <h2>{{ $categoryName }}</h2>
-                <div class="grid">
-                    @foreach ($products as $product)
-                        <div class="card">
-                            <div class="name">{{ $product->name }}</div>
-                            <div class="price">{{ $product->price }} TL</div>
-                        </div>
-                    @endforeach
-                </div>
-            @endforeach
+            <form id="searchForm" class="search-form">
+                <input type="text" id="searchInput" placeholder="Anlamına göre ara... (örn. 'kışlık bir şeyler')" autocomplete="off">
+                <button type="submit">Ara</button>
+                <button type="button" id="clearSearchButton" hidden>Aramayı Temizle</button>
+            </form>
+
+            <div id="searchResultsView" hidden>
+                <h2>Arama Sonuçları</h2>
+                <div class="grid" id="searchResultsGrid"></div>
+            </div>
+
+            <div id="catalogView">
+                @foreach ($productsByCategory as $categoryName => $products)
+                    <h2>{{ $categoryName }}</h2>
+                    <div class="grid">
+                        @foreach ($products as $product)
+                            <div class="card">
+                                <div class="name">{{ $product->name }}</div>
+                                <div class="price">{{ $product->price }} TL</div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
         </main>
 
         <aside class="chat-panel">
@@ -276,6 +317,68 @@
         });
 
         loadHistory();
+
+        // --- Semantik arama ---
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchButton = document.getElementById('clearSearchButton');
+        const searchResultsView = document.getElementById('searchResultsView');
+        const searchResultsGrid = document.getElementById('searchResultsGrid');
+        const catalogView = document.getElementById('catalogView');
+
+        function renderProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = product.name;
+
+            const price = document.createElement('div');
+            price.className = 'price';
+            price.textContent = product.price + ' TL';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = product.category + ' · benzerlik: ' + product.score;
+
+            card.append(name, price, meta);
+            return card;
+        }
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const q = searchInput.value.trim();
+            if (!q) return;
+
+            searchResultsGrid.textContent = 'Aranıyor...';
+            searchResultsView.hidden = false;
+            catalogView.hidden = true;
+            clearSearchButton.hidden = false;
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(q)}&store_id=${storeId}`);
+                const data = await response.json();
+
+                searchResultsGrid.textContent = '';
+
+                if (!data.data.length) {
+                    searchResultsGrid.textContent = 'Sonuç bulunamadı.';
+                    return;
+                }
+
+                data.data.forEach(product => searchResultsGrid.appendChild(renderProductCard(product)));
+            } catch (err) {
+                searchResultsGrid.textContent = 'Arama başarısız: ' + err.message;
+            }
+        });
+
+        clearSearchButton.addEventListener('click', () => {
+            searchInput.value = '';
+            searchResultsView.hidden = true;
+            catalogView.hidden = false;
+            clearSearchButton.hidden = true;
+        });
 
         function addMessage(text, role) {
             const div = document.createElement('div');
