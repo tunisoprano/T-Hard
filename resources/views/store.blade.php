@@ -123,6 +123,54 @@
             cursor: pointer;
         }
         button:disabled { opacity: 0.5; cursor: default; }
+        .history {
+            max-width: 1400px;
+            margin: 24px auto 0;
+            padding: 0 24px;
+        }
+        .history h2 { margin-top: 0; }
+        .history-stores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .history-store {
+            background: #14161c;
+            border: 1px solid #2c2f38;
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .history-store.current {
+            border-color: #3a5bfd;
+            background: #171b2c;
+        }
+        .history-store .store-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .history-store .badge {
+            font-size: 10px;
+            background: #3a5bfd;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 999px;
+            text-transform: uppercase;
+        }
+        .history-store ul {
+            margin: 0;
+            padding-left: 16px;
+            font-size: 13px;
+            color: #c4c9d4;
+            line-height: 1.6;
+        }
+        .history-empty {
+            color: #8a93a6;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -141,6 +189,11 @@
                 @endforeach
             </select>
         </div>
+    </div>
+
+    <div class="history">
+        <h2>Müşteri Geçmişi (Tüm Mağazalar)</h2>
+        <div class="history-stores" id="historyStores"></div>
     </div>
 
     <div class="layout">
@@ -175,6 +228,54 @@
         const input = document.getElementById('messageInput');
         const userSelect = document.getElementById('userSelect');
         const sendButton = document.getElementById('sendButton');
+        const historyStoresEl = document.getElementById('historyStores');
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function loadHistory() {
+            historyStoresEl.textContent = 'Yükleniyor...';
+
+            try {
+                const response = await fetch(`/api/users/${userSelect.value}/orders`);
+                const data = await response.json();
+                const stores = data.data;
+
+                if (!stores.length) {
+                    historyStoresEl.textContent = 'Bu kullanıcının hiçbir mağazada geçmiş siparişi yok.';
+                    return;
+                }
+
+                historyStoresEl.innerHTML = stores.map(store => {
+                    const isCurrent = store.store_id === storeId;
+                    const items = store.products
+                        .map(p => `<li>${escapeHtml(p.name)} (${escapeHtml(p.category)}) × ${p.quantity}</li>`)
+                        .join('');
+
+                    return `
+                        <div class="history-store ${isCurrent ? 'current' : ''}">
+                            <div class="store-name">
+                                ${escapeHtml(store.store_name)}
+                                ${isCurrent ? '<span class="badge">Bu mağaza</span>' : ''}
+                            </div>
+                            <ul>${items}</ul>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                historyStoresEl.textContent = 'Geçmiş yüklenemedi: ' + err.message;
+            }
+        }
+
+        userSelect.addEventListener('change', () => {
+            messagesEl.innerHTML = '';
+            loadHistory();
+        });
+
+        loadHistory();
 
         function addMessage(text, role) {
             const div = document.createElement('div');
