@@ -8,12 +8,25 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\UserContextGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CartApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Checkout artık gerçek bir context dosyası yazıyor (bkz.
+        // test_checkout_regenerates_the_users_context_file) — bunu
+        // gerçek storage/app yerine sahte bir diske yönlendiriyoruz ki
+        // testler dosya sistemini kirletmesin.
+        Storage::fake('local');
+    }
 
     public function test_adding_item_creates_cart_and_returns_totals(): void
     {
@@ -132,6 +145,29 @@ class CartApiTest extends TestCase
         ]);
         $this->assertDatabaseCount('order_items', 1);
         $this->assertDatabaseCount('cart_items', 0);
+    }
+
+    public function test_checkout_regenerates_the_users_context_file(): void
+    {
+        $store = Store::factory()->create();
+        $category = Category::factory()->create();
+        $user = User::factory()->create(['store_id' => $store->id]);
+        $product = Product::factory()->create(['store_id' => $store->id, 'category_id' => $category->id, 'name' => 'Test Ürünü', 'price' => 50]);
+
+        $cart = Cart::create(['user_id' => $user->id, 'store_id' => $store->id]);
+        $cart->items()->create(['product_id' => $product->id, 'quantity' => 2]);
+
+        $this->postJson('/api/cart/checkout', [
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+        ])->assertOk();
+
+        $generator = app(UserContextGenerator::class);
+        Storage::disk('local')->assertExists($generator->path($user, $store));
+
+        $content = $generator->read($user, $store);
+        $this->assertStringContainsString('Test Ürünü', $content);
+        $this->assertStringContainsString('toplam 2 adet', $content);
     }
 
     public function test_checkout_rejects_empty_cart(): void

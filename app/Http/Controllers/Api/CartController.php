@@ -8,11 +8,14 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\UserContextGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    public function __construct(private UserContextGenerator $contextGenerator) {}
+
     public function show(Request $request)
     {
         $data = $request->validate([
@@ -91,8 +94,7 @@ class CartController extends Controller
 
     /**
      * Sepeti gerçek bir siparişe (Order + OrderItem) çevirir ve sepeti
-     * boşaltır. Bu, "yeni sipariş geldiğinde context dosyası güncellensin"
-     * kuralının tetikleyicisi olacak (Order model event ile bağlanacak).
+     * boşaltır.
      */
     public function checkout(Request $request)
     {
@@ -130,6 +132,13 @@ class CartController extends Controller
 
             return $order;
         });
+
+        // Context dosyasını burada, transaction TAMAMEN bittikten (yani
+        // sipariş kalemleri de yazıldıktan) sonra güncelliyoruz. Bunu bir
+        // Order "created" model event'ine bağlamadık çünkü o event, Order
+        // satırı oluşur oluşmaz (kalemler henüz eklenmeden) tetiklenir —
+        // context dosyası siparişin içeriğini eksik/boş görürdü.
+        $this->contextGenerator->generate($order->user, $order->store);
 
         return response()->json([
             'message' => 'Siparişiniz oluşturuldu.',
