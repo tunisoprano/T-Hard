@@ -61,17 +61,17 @@ class PersonaSeeder extends Seeder
      * satılır), bu bir sorun değil.
      */
     private const PRODUCT_NAMES = [
-        'pantolon' => ['Slim Fit Kot Pantolon', 'Regular Fit Kumaş Pantolon', 'Jogger Pantolon', 'Kargo Pantolon', 'Yüksek Bel Pantolon', 'Chino Pantolon', 'Bol Paça Pantolon', 'Likralı Tayt Pantolon', 'Kadife Pantolon', 'Keten Pantolon'],
-        'gomlek' => ['Oxford Gömlek', 'Klasik Kesim Gömlek', 'Keten Gömlek', 'Kareli Gömlek', 'Slim Fit Gömlek', 'Denim Gömlek', 'Çizgili Gömlek', 'Saten Gömlek', 'Uzun Kollu Gömlek', 'Düz Renk Gömlek'],
-        'tisort' => ['Bisiklet Yaka Tişört', 'V Yaka Tişört', 'Oversize Tişört', 'Baskılı Tişört', 'Basic Tişört', 'Uzun Kollu Tişört', 'Ribana Tişört', 'Crop Tişört', 'Pamuklu Tişört', 'Nakışlı Tişört'],
-        'elbise' => ['Midi Elbise', 'Mini Elbise', 'Maxi Elbise', 'Gömlek Elbise', 'Askılı Elbise', 'Triko Elbise', 'Volanlı Elbise', 'Straplez Elbise', 'Çiçek Desenli Elbise', 'Abiye Elbise'],
-        'ceket-mont' => ['Deri Ceket', 'Kaban', 'Parka Mont', 'Bomber Ceket', 'Yağmurluk', 'Blazer Ceket', 'Kapüşonlu Mont', 'Yelek', 'Kruvaze Ceket', 'Şişme Mont'],
-        'ayakkabi' => ['Spor Ayakkabı', 'Klasik Ayakkabı', 'Bot', 'Sandalet', 'Loafer', 'Topuklu Ayakkabı', 'Babet', 'Sneaker', 'Terlik', 'Çizme'],
-        'canta-aksesuar' => ['Sırt Çantası', 'Omuz Çantası', 'Cüzdan', 'Kemer', 'Şapka', 'Atkı', 'Eldiven', 'Güneş Gözlüğü', 'El Çantası', 'Bel Çantası'],
-        'spor' => ['Koşu Ayakkabısı', 'Yoga Matı', 'Fitness Eldiveni', 'Spor Çantası', 'Dambıl Seti', 'Spor Bandı', 'Su Şişesi', 'Spor Şort', 'Koşu Taytı', 'Antrenman Eldiveni'],
-        'teknoloji' => ['Kablosuz Kulaklık', 'Akıllı Saat', 'Powerbank', 'Bluetooth Hoparlör', 'Telefon Kılıfı', 'Şarj Kablosu', 'Tablet Kılıfı', 'Kablosuz Klavye', 'Kablosuz Mouse', 'Webcam'],
-        'ev-yasam' => ['Nevresim Takımı', 'Dekoratif Yastık', 'Kokulu Mum', 'Halı', 'Duvar Saati', 'Battaniye', 'Masa Örtüsü', 'Fon Perde', 'Dekoratif Vazo', 'Duvar Aynası'],
-        'kozmetik-bakim' => ['Nemlendirici Krem', 'Parfüm', 'Şampuan', 'Ruj', 'Cilt Bakım Seti', 'Güneş Kremi', 'Yüz Serumu', 'Bakım Maskesi', 'Deodorant', 'Saç Bakım Yağı'],
+        'pantolon' => ['Slim Fit Kot Pantolon', 'Regular Fit Kumaş Pantolon', 'Jogger Pantolon', 'Kargo Pantolon', 'Yüksek Bel Pantolon', 'Chino Pantolon', 'Bol Paça Pantolon', 'Likralı Tayt Pantolon', 'Kadife Pantolon', 'Keten Pantolon', 'Culotte Pantolon', 'Straight Fit Pantolon', 'Paraşüt Pantolon', 'Kumaş Şort Pantolon', 'Yüksek Bel Kot Pantolon', 'Bilek Boy Pantolon', 'Skinny Pantolon', 'Klasik Kumaş Pantolon', 'Baggy Pantolon', 'Palazzo Pantolon'],
+        'gomlek' => ['Oxford Gömlek', 'Klasik Kesim Gömlek', 'Keten Gömlek', 'Kareli Gömlek', 'Slim Fit Gömlek', 'Denim Gömlek', 'Çizgili Gömlek', 'Saten Gömlek', 'Uzun Kollu Gömlek', 'Düz Renk Gömlek', 'Kısa Kollu Gömlek', 'Poplin Gömlek', 'Flanel Gömlek', 'Rahat Kesim Gömlek', 'Beyaz Gömlek', 'Desenli Gömlek', 'Yakasız Gömlek', 'Battal Beden Gömlek', 'Vual Gömlek', 'Crop Gömlek'],
+        'tisort' => ['Bisiklet Yaka Tişört', 'V Yaka Tişört', 'Oversize Tişört', 'Baskılı Tişört', 'Basic Tişört', 'Uzun Kollu Tişört', 'Ribana Tişört', 'Crop Tişört', 'Pamuklu Tişört', 'Nakışlı Tişört', 'Polo Yaka Tişört', 'Çizgili Tişört', 'Fitilli Tişört', 'Askılı Tişört', 'Kısa Kollu Tişört', 'Battal Beden Tişört', 'Slim Fit Tişört', 'Yazılı Tişört', 'Yıkamalı Tişört', 'Örme Tişört'],
+        'elbise' => ['Midi Elbise', 'Mini Elbise', 'Maxi Elbise', 'Gömlek Elbise', 'Askılı Elbise', 'Triko Elbise', 'Volanlı Elbise', 'Straplez Elbise', 'Çiçek Desenli Elbise', 'Abiye Elbise', 'Kruvaze Elbise', 'Kalem Elbise', 'Şık Ofis Elbise', 'Denim Elbise', 'Büzgülü Elbise', 'Balon Kol Elbise', 'Örme Elbise', 'Yazlık Elbise', 'Uzun Kollu Elbise', 'Desenli Yazlık Elbise'],
+        'ceket-mont' => ['Deri Ceket', 'Kaban', 'Parka Mont', 'Bomber Ceket', 'Yağmurluk', 'Blazer Ceket', 'Kapüşonlu Mont', 'Yelek', 'Kruvaze Ceket', 'Şişme Mont', 'Trençkot', 'Kadife Ceket', 'Denim Ceket', 'Yünlü Kaban', 'Rüzgarlık', 'Puffer Mont', 'Oversize Ceket', 'Yelekli Ceket', 'Deri Mont', 'Kayak Montu'],
+        'ayakkabi' => ['Spor Ayakkabı', 'Klasik Ayakkabı', 'Bot', 'Sandalet', 'Loafer', 'Topuklu Ayakkabı', 'Babet', 'Sneaker', 'Terlik', 'Çizme', 'Oxford Ayakkabı', 'Platform Ayakkabı', 'Yürüyüş Ayakkabısı', 'Stiletto', 'Espadril', 'Bot Sneaker', 'Deri Ayakkabı', 'Dolgu Topuk', 'Mokasen', 'Bileğe Bağlı Sandalet'],
+        'canta-aksesuar' => ['Sırt Çantası', 'Omuz Çantası', 'Cüzdan', 'Kemer', 'Şapka', 'Atkı', 'Eldiven', 'Güneş Gözlüğü', 'El Çantası', 'Bel Çantası', 'Postacı Çantası', 'Sırt Çantası Mini', 'Deri Cüzdan', 'Bere', 'Fular', 'Saat', 'Küpe Seti', 'Kolye', 'Bileklik', 'Çanta Askısı'],
+        'spor' => ['Koşu Ayakkabısı', 'Yoga Matı', 'Fitness Eldiveni', 'Spor Çantası', 'Dambıl Seti', 'Spor Bandı', 'Su Şişesi', 'Spor Şort', 'Koşu Taytı', 'Antrenman Eldiveni', 'Direnç Bandı', 'Spor Sütyeni', 'Koşu Montu', 'Kettlebell', 'İp Atlama', 'Spor Havlusu', 'Termos Matara', 'Spor Bel Çantası', 'Kondisyon Bisikleti Eldiveni', 'Pilates Topu'],
+        'teknoloji' => ['Kablosuz Kulaklık', 'Akıllı Saat', 'Powerbank', 'Bluetooth Hoparlör', 'Telefon Kılıfı', 'Şarj Kablosu', 'Tablet Kılıfı', 'Kablosuz Klavye', 'Kablosuz Mouse', 'Webcam', 'Kablosuz Şarj Cihazı', 'USB Hub', 'Taşınabilir SSD', 'Ekran Koruyucu', 'Telefon Standı', 'Bluetooth Kulak İçi', 'Akıllı Bileklik', 'Mini Projektör', 'Oyuncu Kulaklığı', 'Kablosuz Mikrofon'],
+        'ev-yasam' => ['Nevresim Takımı', 'Dekoratif Yastık', 'Kokulu Mum', 'Halı', 'Duvar Saati', 'Battaniye', 'Masa Örtüsü', 'Fon Perde', 'Dekoratif Vazo', 'Duvar Aynası', 'Yatak Örtüsü', 'Çift Kişilik Nevresim', 'Halı Yolluk', 'Aromaterapi Difüzör', 'Dekoratif Tablo', 'Şamdan', 'Sehpa Örtüsü', 'Klozet Takımı', 'Banyo Paspası', 'Mutfak Önlüğü'],
+        'kozmetik-bakim' => ['Nemlendirici Krem', 'Parfüm', 'Şampuan', 'Ruj', 'Cilt Bakım Seti', 'Güneş Kremi', 'Yüz Serumu', 'Bakım Maskesi', 'Deodorant', 'Saç Bakım Yağı', 'Göz Kremi', 'Temizleme Jeli', 'Tonik', 'Saç Kremi', 'El Kremi', 'Vücut Losyonu', 'Makyaj Temizleyici', 'Far Paleti', 'Maskara', 'Dudak Balsamı'],
     ];
 
     private const STORE_NAMES = [
@@ -83,7 +83,7 @@ class PersonaSeeder extends Seeder
 
     private const TOTAL_USERS = 150;
 
-    private const TOTAL_PRODUCTS = 150;
+    private const TOTAL_PRODUCTS = 400;
 
     private const TOTAL_ORDERS = 1500;
 
