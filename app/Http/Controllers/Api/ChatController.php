@@ -153,6 +153,11 @@ class ChatController extends Controller
         5. "Yok" ile "bilmiyorum" farklı şeylerdir. Emin olmadığın hiçbir şeyi kesin bir dille ifade etme.
         6. Kullanıcı Bağlamı'ndaki "Satın Alma Geçmişi" listesindeki HER kalemi tek tek say,
            hiçbirini atlama, özetleme veya gruplama.
+        7. "Önerilen Ürünler" listesindeki ürünleri paylaşırken TEK YAPMAN GEREKEN: "Size
+           önerebileceğim ürünler şunlar:" yazıp altına listeyi vermek. Listeden SONRA hiçbir
+           cümle EKLEME — "ilginizi çektiğini düşündüğüm için", "genellikle tercih ettiğiniz",
+           "kategorinize uygun" gibi TEK BİR yorum/gerekçe cümlesi bile yazma, başka mağazadan
+           bahsetme. Cevabın listeyle bitsin, liste sonrası boş bırak.
 
         Kullanıcı Bağlamı ({$store->name}):
         {$context}
