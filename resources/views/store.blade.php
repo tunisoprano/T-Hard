@@ -73,6 +73,123 @@
         .card .name { font-size: 14px; margin-bottom: 8px; }
         .card .price { font-size: 16px; font-weight: 600; color: #6f8cff; }
         .card .meta { font-size: 11px; color: #8a93a6; margin-top: 4px; }
+        .card .add-to-cart-btn {
+            margin-top: 8px;
+            width: 100%;
+            background: #22252d;
+            color: #e6e6e6;
+            border: 1px solid #2c2f38;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .card .add-to-cart-btn:hover { background: #2c2f38; }
+        .card .add-to-cart-btn.added { background: #1e3a2b; border-color: #2f6b46; color: #7ee2a8; }
+        .cart-button {
+            position: relative;
+            background: #1c1f26;
+            color: #e6e6e6;
+            border: 1px solid #2c2f38;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #3a5bfd;
+            color: white;
+            border-radius: 999px;
+            font-size: 11px;
+            padding: 1px 6px;
+            min-width: 16px;
+        }
+        .cart-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: flex-end;
+            z-index: 100;
+        }
+        .cart-overlay:not([hidden]) { display: flex; }
+        .cart-panel {
+            width: 380px;
+            max-width: 100%;
+            height: 100%;
+            background: #14161c;
+            border-left: 1px solid #2c2f38;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .cart-panel h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .cart-panel h2 button {
+            background: none;
+            border: none;
+            color: #8a93a6;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .cart-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #2c2f38;
+        }
+        .cart-line .name { font-size: 14px; }
+        .cart-line .unit-price { font-size: 12px; color: #8a93a6; }
+        .cart-line .qty-controls { display: flex; align-items: center; gap: 6px; }
+        .cart-line .qty-controls button {
+            background: #1c1f26;
+            color: #e6e6e6;
+            border: 1px solid #2c2f38;
+            border-radius: 6px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+        .cart-line .remove-btn { color: #e07171; background: none; border: none; cursor: pointer; font-size: 12px; }
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+        .checkout-btn {
+            background: #3a5bfd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .checkout-btn:disabled { opacity: 0.5; cursor: default; }
+        .cart-empty { color: #8a93a6; font-size: 13px; }
+        .order-card {
+            background: #1c1f26;
+            border: 1px solid #2c2f38;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .order-card .order-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        .order-card .order-no { font-weight: 600; font-size: 14px; }
+        .order-card .order-date { font-size: 12px; color: #8a93a6; }
+        .order-card ul { margin: 0 0 8px; padding-left: 16px; font-size: 13px; color: #c4c9d4; line-height: 1.6; }
+        .order-card .order-total { font-weight: 600; color: #6f8cff; text-align: right; }
         .search-form {
             display: flex;
             gap: 8px;
@@ -216,6 +333,36 @@
                     <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->persona }})</option>
                 @endforeach
             </select>
+            <button type="button" class="cart-button" id="ordersButton">📦 Siparişlerim</button>
+            <button type="button" class="cart-button" id="cartButton">
+                🛒 Sepetim
+                <span class="cart-badge" id="cartBadge" hidden>0</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="cart-overlay" id="cartOverlay" hidden>
+        <div class="cart-panel">
+            <h2>
+                Sepetim
+                <button type="button" id="closeCartButton">&times;</button>
+            </h2>
+            <div id="cartLines"></div>
+            <div class="cart-total">
+                <span>Toplam</span>
+                <span id="cartTotal">0 TL</span>
+            </div>
+            <button type="button" class="checkout-btn" id="checkoutButton">Siparişi Tamamla</button>
+        </div>
+    </div>
+
+    <div class="cart-overlay" id="ordersOverlay" hidden>
+        <div class="cart-panel">
+            <h2>
+                Siparişlerim — {{ $store->name }}
+                <button type="button" id="closeOrdersButton">&times;</button>
+            </h2>
+            <div id="ordersList"></div>
         </div>
     </div>
 
@@ -245,6 +392,7 @@
                             <div class="card">
                                 <div class="name">{{ $product->name }}</div>
                                 <div class="price">{{ $product->price }} TL</div>
+                                <button type="button" class="add-to-cart-btn" data-product-id="{{ $product->id }}">Sepete Ekle</button>
                             </div>
                         @endforeach
                     </div>
@@ -314,6 +462,7 @@
         userSelect.addEventListener('change', () => {
             messagesEl.innerHTML = '';
             loadHistory();
+            loadCart();
         });
 
         loadHistory();
@@ -342,7 +491,13 @@
             meta.className = 'meta';
             meta.textContent = product.category + ' · benzerlik: ' + product.score;
 
-            card.append(name, price, meta);
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'add-to-cart-btn';
+            addButton.dataset.productId = product.id;
+            addButton.textContent = 'Sepete Ekle';
+
+            card.append(name, price, meta, addButton);
             return card;
         }
 
@@ -378,6 +533,264 @@
             searchResultsView.hidden = true;
             catalogView.hidden = false;
             clearSearchButton.hidden = true;
+        });
+
+        // --- Sepet ---
+        const cartButton = document.getElementById('cartButton');
+        const cartBadge = document.getElementById('cartBadge');
+        const cartOverlay = document.getElementById('cartOverlay');
+        const closeCartButton = document.getElementById('closeCartButton');
+        const cartLinesEl = document.getElementById('cartLines');
+        const cartTotalEl = document.getElementById('cartTotal');
+        const checkoutButton = document.getElementById('checkoutButton');
+
+        let currentCart = { items: [], total: 0 };
+
+        function updateCartBadge() {
+            const count = currentCart.items.reduce((sum, item) => sum + item.quantity, 0);
+            cartBadge.textContent = count;
+            cartBadge.hidden = count === 0;
+        }
+
+        function renderCartLine(item) {
+            const line = document.createElement('div');
+            line.className = 'cart-line';
+
+            const info = document.createElement('div');
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = item.name;
+            const unitPrice = document.createElement('div');
+            unitPrice.className = 'unit-price';
+            unitPrice.textContent = item.price + ' TL × ' + item.quantity + ' = ' + item.subtotal + ' TL';
+            info.append(name, unitPrice);
+
+            const controls = document.createElement('div');
+            controls.className = 'qty-controls';
+
+            const decreaseBtn = document.createElement('button');
+            decreaseBtn.type = 'button';
+            decreaseBtn.textContent = '−';
+            decreaseBtn.addEventListener('click', () => changeQuantity(item.id, item.quantity - 1));
+
+            const qtyLabel = document.createElement('span');
+            qtyLabel.textContent = item.quantity;
+
+            const increaseBtn = document.createElement('button');
+            increaseBtn.type = 'button';
+            increaseBtn.textContent = '+';
+            increaseBtn.addEventListener('click', () => changeQuantity(item.id, item.quantity + 1));
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = 'Kaldır';
+            removeBtn.addEventListener('click', () => removeCartItem(item.id));
+
+            controls.append(decreaseBtn, qtyLabel, increaseBtn, removeBtn);
+            line.append(info, controls);
+            return line;
+        }
+
+        function renderCart() {
+            cartLinesEl.textContent = '';
+
+            if (!currentCart.items.length) {
+                const empty = document.createElement('div');
+                empty.className = 'cart-empty';
+                empty.textContent = 'Sepetiniz boş.';
+                cartLinesEl.appendChild(empty);
+            } else {
+                currentCart.items.forEach(item => cartLinesEl.appendChild(renderCartLine(item)));
+            }
+
+            cartTotalEl.textContent = currentCart.total + ' TL';
+            checkoutButton.disabled = currentCart.items.length === 0;
+            updateCartBadge();
+        }
+
+        async function loadCart() {
+            try {
+                const response = await fetch(`/api/cart?user_id=${userSelect.value}&store_id=${storeId}`);
+                currentCart = await response.json();
+                renderCart();
+            } catch (err) {
+                cartLinesEl.textContent = 'Sepet yüklenemedi: ' + err.message;
+            }
+        }
+
+        async function changeQuantity(itemId, newQuantity) {
+            if (newQuantity < 1) {
+                return removeCartItem(itemId);
+            }
+            const response = await fetch(`/api/cart/items/${itemId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: newQuantity }),
+            });
+            currentCart = await response.json();
+            renderCart();
+        }
+
+        async function removeCartItem(itemId) {
+            const response = await fetch(`/api/cart/items/${itemId}`, { method: 'DELETE' });
+            currentCart = await response.json();
+            renderCart();
+        }
+
+        cartButton.addEventListener('click', () => {
+            loadCart();
+            cartOverlay.hidden = false;
+        });
+
+        closeCartButton.addEventListener('click', () => {
+            cartOverlay.hidden = true;
+        });
+
+        cartOverlay.addEventListener('click', (e) => {
+            if (e.target === cartOverlay) {
+                cartOverlay.hidden = true;
+            }
+        });
+
+        checkoutButton.addEventListener('click', async () => {
+            checkoutButton.disabled = true;
+            checkoutButton.textContent = 'Gönderiliyor...';
+
+            try {
+                const response = await fetch('/api/cart/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userSelect.value, store_id: storeId }),
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.message || 'Sipariş oluşturulamadı.');
+                    return;
+                }
+
+                alert('Siparişiniz oluşturuldu! Toplam: ' + data.total_amount + ' TL');
+                cartOverlay.hidden = true;
+                await loadCart();
+                loadHistory(); // müşteri geçmişi panelini de tazele
+            } finally {
+                checkoutButton.textContent = 'Siparişi Tamamla';
+                checkoutButton.disabled = currentCart.items.length === 0;
+            }
+        });
+
+        // "Sepete Ekle" butonları hem statik katalogda hem dinamik arama
+        // sonuçlarında olduğu için, tek bir delegasyon dinleyicisiyle
+        // ikisini birden yakalıyoruz.
+        document.body.addEventListener('click', async (e) => {
+            const button = e.target.closest('.add-to-cart-btn');
+            if (!button) return;
+
+            const productId = button.dataset.productId;
+            button.disabled = true;
+
+            try {
+                const response = await fetch('/api/cart/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userSelect.value,
+                        store_id: storeId,
+                        product_id: productId,
+                    }),
+                });
+                currentCart = await response.json();
+                updateCartBadge();
+
+                button.classList.add('added');
+                button.textContent = 'Eklendi ✓';
+                setTimeout(() => {
+                    button.classList.remove('added');
+                    button.textContent = 'Sepete Ekle';
+                    button.disabled = false;
+                }, 1200);
+            } catch (err) {
+                button.disabled = false;
+            }
+        });
+
+        loadCart();
+
+        // --- Siparişlerim ---
+        const ordersButton = document.getElementById('ordersButton');
+        const ordersOverlay = document.getElementById('ordersOverlay');
+        const closeOrdersButton = document.getElementById('closeOrdersButton');
+        const ordersListEl = document.getElementById('ordersList');
+
+        function renderOrderCard(order) {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+
+            const head = document.createElement('div');
+            head.className = 'order-head';
+
+            const orderNo = document.createElement('div');
+            orderNo.className = 'order-no';
+            orderNo.textContent = 'Sipariş #' + order.order_id;
+
+            const orderDate = document.createElement('div');
+            orderDate.className = 'order-date';
+            orderDate.textContent = new Date(order.order_date).toLocaleDateString('tr-TR');
+
+            head.append(orderNo, orderDate);
+
+            const list = document.createElement('ul');
+            order.items.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.name + ' (' + item.category + ') × ' + item.quantity + ' — ' + item.unit_price + ' TL';
+                list.appendChild(li);
+            });
+
+            const total = document.createElement('div');
+            total.className = 'order-total';
+            total.textContent = 'Toplam: ' + order.total_amount + ' TL';
+
+            card.append(head, list, total);
+            return card;
+        }
+
+        async function loadOrders() {
+            ordersListEl.textContent = 'Yükleniyor...';
+
+            try {
+                const response = await fetch(`/api/users/${userSelect.value}/orders/detailed?store_id=${storeId}`);
+                const data = await response.json();
+
+                ordersListEl.textContent = '';
+
+                if (!data.data.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'cart-empty';
+                    empty.textContent = 'Bu mağazada henüz siparişiniz yok.';
+                    ordersListEl.appendChild(empty);
+                    return;
+                }
+
+                data.data.forEach(order => ordersListEl.appendChild(renderOrderCard(order)));
+            } catch (err) {
+                ordersListEl.textContent = 'Siparişler yüklenemedi: ' + err.message;
+            }
+        }
+
+        ordersButton.addEventListener('click', () => {
+            loadOrders();
+            ordersOverlay.hidden = false;
+        });
+
+        closeOrdersButton.addEventListener('click', () => {
+            ordersOverlay.hidden = true;
+        });
+
+        ordersOverlay.addEventListener('click', (e) => {
+            if (e.target === ordersOverlay) {
+                ordersOverlay.hidden = true;
+            }
         });
 
         function addMessage(text, role) {

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class UserOrderController extends Controller
 {
@@ -46,5 +48,39 @@ class UserOrderController extends Controller
             ->values();
 
         return response()->json(['data' => $byStore]);
+    }
+
+    /**
+     * "Siparişlerim" ekranı için: her siparişi AYRI bir satır olarak
+     * döner (sipariş no, tarih, ürünler, toplam) — index()'teki gibi
+     * ürün bazında özetlemez. `store_id` verilirse sadece o mağazadaki
+     * siparişler döner, verilmezse kullanıcının tüm mağazalardaki
+     * siparişleri (en yeni önce).
+     */
+    public function detailed(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'store_id' => ['nullable', 'exists:stores,id'],
+        ]);
+
+        $orders = $user->orders()
+            ->with(['store', 'orderItems.product.category'])
+            ->when($data['store_id'] ?? null, fn ($query, $storeId) => $query->where('store_id', $storeId))
+            ->orderByDesc('order_date')
+            ->get()
+            ->map(fn (Order $order) => [
+                'order_id' => $order->id,
+                'order_date' => $order->order_date->toIso8601String(),
+                'store' => $order->store->name,
+                'total_amount' => $order->total_amount,
+                'items' => $order->orderItems->map(fn (OrderItem $item) => [
+                    'name' => $item->product->name,
+                    'category' => $item->product->category->name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                ]),
+            ]);
+
+        return response()->json(['data' => $orders]);
     }
 }
