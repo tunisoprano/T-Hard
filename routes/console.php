@@ -9,5 +9,8 @@ Artisan::command('inspire', function () {
 
 use Illuminate\Support\Facades\Schedule;
 
-// Her gece saat 03:00'te öneri modelini otomatik yeniden eğit
+// Her gece saat 03:00'te öneri modelini yeniden eğit; bu komut kendi
+// içinde başarılı olunca context:generate'i de tetikliyor (bkz.
+// TrainRecommender::handle) — böylece context dosyaları her zaman
+// güncel önerilerle üretiliyor, ayrı bir zamanlamaya gerek yok.
 Schedule::command('recommender:train')->dailyAt('03:00');

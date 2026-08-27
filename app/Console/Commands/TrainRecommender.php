@@ -54,6 +54,15 @@ class TrainRecommender extends Command
         }
 
         $this->info("\n✅ Öneri modeli başarıyla eğitildi ve veritabanı güncellendi!");
+
+        // Context dosyaları (recommendations tablosundaki "önerilen ürünler"
+        // bölümünü içeriyor) her zaman eğitimden HEMEN SONRA üretilmeli —
+        // yoksa chatbot/sepet ekranı bayat önerilerle çalışır. Bu komutu
+        // burada çağırmak, hem cron'da hem elle çalıştırmada sırayı garanti
+        // ediyor (ayrı ayrı zamanlanmış iki cron'un zamanlamasına güvenmek
+        // yerine).
+        $this->call('context:generate');
+
         return Command::SUCCESS;
     }
 }
