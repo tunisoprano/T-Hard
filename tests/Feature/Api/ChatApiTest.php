@@ -109,16 +109,17 @@ class ChatApiTest extends TestCase
         $user = User::factory()->create(['store_id' => $store->id]);
 
         // store_id nullable olduğu için, var olan bir store_id ile
-        // validation geçmeli (ama Ollama kapalıysa 500 dönebilir,
-        // o yüzden sadece validation'ın geçtiğini kontrol ediyoruz)
+        // validation geçmeli. Endpoint artık StreamedResponse döndürüyor
+        // (streaming) — bu yüzden status() değil, ham getStatusCode()
+        // kullanıyoruz; başlıklar (dolayısıyla 200) callback çalışmadan
+        // hemen gönderildiği için Ollama kapalı olsa bile burada hâlâ 200
+        // görürüz, önemli olan 422 (validation hatası) dönmediğini görmek.
         $response = $this->postJson('/api/chat', [
             'user_id' => $user->id,
             'message' => 'Merhaba',
             'store_id' => $store->id,
         ]);
 
-        // Validation geçti = 422 DEĞİL
-        // (Ollama kapalıysa 500 dönebilir, ama 422 dönmemeli)
-        $this->assertNotEquals(422, $response->status());
+        $this->assertNotEquals(422, $response->baseResponse->getStatusCode());
     }
 }

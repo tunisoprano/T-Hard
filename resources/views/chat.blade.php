@@ -138,7 +138,7 @@
             addMessage(message, 'user');
             input.value = '';
             sendButton.disabled = true;
-            const pending = addMessage('Yazıyor...', 'pending');
+            const botBubble = addMessage('Yazıyor...', 'pending');
 
             try {
                 const response = await fetch('/api/chat', {
@@ -150,17 +150,35 @@
                     }),
                 });
 
-                const data = await response.json();
-                pending.remove();
-
                 if (!response.ok) {
-                    addMessage('Hata: ' + (data.message || 'Bilinmeyen bir hata oluştu.'), 'bot');
-                } else {
-                    addMessage(data.reply, 'bot');
+                    const data = await response.json();
+                    botBubble.className = 'msg bot';
+                    botBubble.textContent = 'Hata: ' + (data.message || 'Bilinmeyen bir hata oluştu.');
+                    return;
+                }
+
+                // Cevap artık tek seferde değil, parça parça (stream) geliyor —
+                // her parça geldikçe balonun içeriğine ekliyoruz.
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let firstChunk = true;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    if (firstChunk) {
+                        botBubble.className = 'msg bot';
+                        botBubble.textContent = '';
+                        firstChunk = false;
+                    }
+
+                    botBubble.textContent += decoder.decode(value, { stream: true });
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
                 }
             } catch (err) {
-                pending.remove();
-                addMessage('Sunucuya ulaşılamadı: ' + err.message, 'bot');
+                botBubble.className = 'msg bot';
+                botBubble.textContent = 'Sunucuya ulaşılamadı: ' + err.message;
             } finally {
                 sendButton.disabled = false;
                 input.focus();
