@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,16 @@ use Tests\TestCase;
 class ChatApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // ChatController artık prompt oluştururken context dosyasını okuyor
+        // (bkz. UserContextGenerator) — testler gerçek storage/app'e değil
+        // sahte bir diske baksın.
+        Storage::fake('local');
+    }
 
     public function test_chat_requires_user_id(): void
     {
@@ -121,5 +132,51 @@ class ChatApiTest extends TestCase
         ]);
 
         $this->assertNotEquals(422, $response->baseResponse->getStatusCode());
+    }
+
+    /**
+     * Prompt oluşturma metodları private olduğu için (ve StreamedResponse
+     * callback'i test client'ında hiç çalışmadığı için — bkz. yukarıdaki
+     * not), bunları Reflection ile doğrudan çağırıp context dosyasının
+     * gerçekten prompt'a gömüldüğünü kanıtlıyoruz. DB'de hiçbir sipariş/
+     * öneri kaydı YOK — eğer prompt DB'ye gidiyor olsaydı bu içerik asla
+     * çıkmazdı, sadece elle yazdığımız context dosyasından gelebilir.
+     */
+    public function test_store_prompt_is_built_from_context_file_not_live_db(): void
+    {
+        $store = Store::factory()->create(['name' => 'Test Mağaza']);
+        $user = User::factory()->create(['store_id' => $store->id]);
+
+        $generator = app(\App\Services\UserContextGenerator::class);
+        Storage::disk('local')->put(
+            $generator->path($user, $store),
+            "# Kullanıcı Bağlamı\nBenzersizTestCumlesiXYZ123"
+        );
+
+        $controller = app(\App\Http\Controllers\Api\ChatController::class);
+        $method = new \ReflectionMethod($controller, 'buildStorePrompt');
+        $method->setAccessible(true);
+        $prompt = $method->invoke($controller, $store, $user);
+
+        $this->assertStringContainsString('BenzersizTestCumlesiXYZ123', $prompt);
+    }
+
+    public function test_personal_prompt_combines_all_of_the_users_store_context_files(): void
+    {
+        $storeA = Store::factory()->create();
+        $storeB = Store::factory()->create();
+        $user = User::factory()->create(['store_id' => $storeA->id]);
+
+        $generator = app(\App\Services\UserContextGenerator::class);
+        Storage::disk('local')->put($generator->path($user, $storeA), 'MagazaA_BenzersizIcerik');
+        Storage::disk('local')->put($generator->path($user, $storeB), 'MagazaB_BenzersizIcerik');
+
+        $controller = app(\App\Http\Controllers\Api\ChatController::class);
+        $method = new \ReflectionMethod($controller, 'buildPersonalPrompt');
+        $method->setAccessible(true);
+        $prompt = $method->invoke($controller, $user);
+
+        $this->assertStringContainsString('MagazaA_BenzersizIcerik', $prompt);
+        $this->assertStringContainsString('MagazaB_BenzersizIcerik', $prompt);
     }
 }
