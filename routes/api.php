@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ProductController;
@@ -19,7 +20,14 @@ Route::get('products/{product}', [ProductController::class, 'show']);
 
 Route::get('users/{user}/recommendations', [RecommendationController::class, 'index']);
 Route::get('users/{user}/orders', [UserOrderController::class, 'index']);
+Route::get('users/{user}/orders/detailed', [UserOrderController::class, 'detailed']);
 
 Route::post('chat', [ChatController::class, 'respond']);
 
 Route::get('search', [SearchController::class, 'index']);
+
+Route::get('cart', [CartController::class, 'show']);
+Route::post('cart/items', [CartController::class, 'addItem']);
+Route::patch('cart/items/{cartItem}', [CartController::class, 'updateItem']);
+Route::delete('cart/items/{cartItem}', [CartController::class, 'removeItem']);
+Route::post('cart/checkout', [CartController::class, 'checkout']);
