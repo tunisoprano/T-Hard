@@ -353,6 +353,9 @@
                 <span id="cartTotal">0 TL</span>
             </div>
             <button type="button" class="checkout-btn" id="checkoutButton">Siparişi Tamamla</button>
+
+            <h2 style="margin-top: 24px; font-size: 15px;">Sana Özel Öneriler</h2>
+            <div class="grid" id="cartRecommendations"></div>
         </div>
     </div>
 
@@ -489,7 +492,9 @@
 
             const meta = document.createElement('div');
             meta.className = 'meta';
-            meta.textContent = product.category + ' · benzerlik: ' + product.score;
+            meta.textContent = product.score !== undefined
+                ? product.category + ' · benzerlik: ' + product.score
+                : product.category;
 
             const addButton = document.createElement('button');
             addButton.type = 'button';
@@ -638,8 +643,34 @@
             renderCart();
         }
 
+        const cartRecommendationsEl = document.getElementById('cartRecommendations');
+
+        async function loadCartRecommendations() {
+            cartRecommendationsEl.textContent = 'Yükleniyor...';
+
+            try {
+                const response = await fetch(`/api/cart/recommendations?user_id=${userSelect.value}&store_id=${storeId}`);
+                const data = await response.json();
+
+                cartRecommendationsEl.textContent = '';
+
+                if (!data.data.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'cart-empty';
+                    empty.textContent = 'Henüz öneri yok.';
+                    cartRecommendationsEl.appendChild(empty);
+                    return;
+                }
+
+                data.data.forEach(product => cartRecommendationsEl.appendChild(renderProductCard(product)));
+            } catch (err) {
+                cartRecommendationsEl.textContent = 'Öneriler yüklenemedi: ' + err.message;
+            }
+        }
+
         cartButton.addEventListener('click', () => {
             loadCart();
+            loadCartRecommendations();
             cartOverlay.hidden = false;
         });
 
@@ -701,7 +732,7 @@
                     }),
                 });
                 currentCart = await response.json();
-                updateCartBadge();
+                renderCart();
 
                 button.classList.add('added');
                 button.textContent = 'Eklendi ✓';

@@ -8,6 +8,8 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Store;
+use App\Models\User;
 use App\Services\UserContextGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,26 @@ class CartController extends Controller
         $cart->load('items.product.category');
 
         return response()->json($this->formatCart($cart));
+    }
+
+    /**
+     * Sepet ekranındaki "Sana Özel Öneriler" paneli. DB'ye canlı sorgu
+     * atmaz — sadece o kullanıcı+mağaza için önceden üretilmiş context
+     * dosyasını okuyup "Önerilen Ürünler" bölümünü ayrıştırır.
+     */
+    public function recommendations(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+            'store_id' => ['required', 'exists:stores,id'],
+        ]);
+
+        $user = User::findOrFail($data['user_id']);
+        $store = Store::findOrFail($data['store_id']);
+
+        return response()->json([
+            'data' => $this->contextGenerator->parseRecommendations($user, $store),
+        ]);
     }
 
     public function addItem(Request $request)

@@ -27,6 +27,7 @@ Route::post('chat', [ChatController::class, 'respond']);
 Route::get('search', [SearchController::class, 'index']);
 
 Route::get('cart', [CartController::class, 'show']);
+Route::get('cart/recommendations', [CartController::class, 'recommendations']);
 Route::post('cart/items', [CartController::class, 'addItem']);
 Route::patch('cart/items/{cartItem}', [CartController::class, 'updateItem']);
 Route::delete('cart/items/{cartItem}', [CartController::class, 'removeItem']);

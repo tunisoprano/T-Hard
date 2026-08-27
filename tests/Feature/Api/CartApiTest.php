@@ -183,4 +183,33 @@ class CartApiTest extends TestCase
         $response->assertStatus(422);
         $this->assertDatabaseCount('orders', 0);
     }
+
+    public function test_cart_recommendations_are_parsed_from_context_file_not_db(): void
+    {
+        $store = Store::factory()->create();
+        $user = User::factory()->create(['store_id' => $store->id]);
+        $product = Product::factory()->create(['store_id' => $store->id, 'price' => 199.99]);
+
+        $generator = app(UserContextGenerator::class);
+        $markdown = "## Bu Mağaza İçin Önerilen Ürünler\n\n"
+            ."- Test Önerisi (Test Kategori, 199.99 TL) [#{$product->id}]";
+        Storage::disk('local')->put($generator->path($user, $store), $markdown);
+
+        $response = $this->getJson("/api/cart/recommendations?user_id={$user->id}&store_id={$store->id}");
+
+        $response->assertOk()->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $product->id);
+        $response->assertJsonPath('data.0.name', 'Test Önerisi');
+        $response->assertJsonPath('data.0.category', 'Test Kategori');
+    }
+
+    public function test_cart_recommendations_empty_when_no_context_file_exists(): void
+    {
+        $store = Store::factory()->create();
+        $user = User::factory()->create(['store_id' => $store->id]);
+
+        $response = $this->getJson("/api/cart/recommendations?user_id={$user->id}&store_id={$store->id}");
+
+        $response->assertOk()->assertJsonCount(0, 'data');
+    }
 }

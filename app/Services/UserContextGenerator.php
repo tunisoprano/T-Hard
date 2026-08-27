@@ -52,6 +52,10 @@ class UserContextGenerator
             ))
             ->implode("\n");
 
+        // Satır sonundaki [#id] etiketi: LLM bunu görmezden gelip normal
+        // metin gibi okur, ama sepet ekranı bu ID'yi ayrıştırıp "Sepete
+        // Ekle" butonuna bağlıyor (bkz. CartController::recommendations).
+        // İnsan/LLM okunabilirliğini bozmadan, programatik erişim ekliyor.
         $recommendations = $user->recommendations()
             ->where('store_id', $store->id)
             ->with('product.category')
@@ -59,10 +63,11 @@ class UserContextGenerator
             ->limit(self::TOP_RECOMMENDATIONS)
             ->get()
             ->map(fn ($rec) => sprintf(
-                '- %s (%s, %s TL)',
+                '- %s (%s, %s TL) [#%d]',
                 $rec->product->name,
                 $rec->product->category->name,
-                $rec->product->price
+                $rec->product->price,
+                $rec->product->id
             ))
             ->implode("\n");
 
@@ -110,6 +115,58 @@ class UserContextGenerator
         return Storage::disk('local')->exists($path)
             ? Storage::disk('local')->get($path)
             : null;
+    }
+
+    /**
+     * Platform geneli (mağaza seçilmemiş) chatbot için: kullanıcının
+     * TÜM mağazalardaki context dosyalarını, dosya sistemini tarayarak
+     * (Store tablosuna DB sorgusu atmadan) bulup birleştirir.
+     *
+     * @return array<int, string> her elemanı bir mağazanın markdown içeriği
+     */
+    public function readAllForUser(User $user): array
+    {
+        $contents = [];
+
+        foreach (Storage::disk('local')->directories('user-contexts') as $storeDir) {
+            $path = "{$storeDir}/{$user->id}.md";
+
+            if (Storage::disk('local')->exists($path)) {
+                $contents[] = Storage::disk('local')->get($path);
+            }
+        }
+
+        return $contents;
+    }
+
+    /**
+     * Sepet ekranındaki öneri paneli için: context dosyasındaki "Önerilen
+     * Ürünler" bölümünü ayrıştırıp yapılandırılmış bir diziye çevirir.
+     * DB'ye gitmez — sadece dosyayı okuyup regex ile satırları parse eder.
+     *
+     * @return array<int, array{id:int, name:string, category:string, price:string}>
+     */
+    public function parseRecommendations(User $user, Store $store): array
+    {
+        $markdown = $this->read($user, $store);
+
+        if ($markdown === null) {
+            return [];
+        }
+
+        preg_match_all(
+            '/^- (.+?) \((.+?), ([\d.]+) TL\) \[#(\d+)\]$/m',
+            $markdown,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        return array_map(fn ($match) => [
+            'id' => (int) $match[4],
+            'name' => $match[1],
+            'category' => $match[2],
+            'price' => $match[3],
+        ], $matches);
     }
 
     private function orNone(?string $value): string
