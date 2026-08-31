@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListUserOrdersRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
-use Illuminate\Http\Request;
 
 class UserOrderController extends Controller
 {
@@ -57,11 +57,9 @@ class UserOrderController extends Controller
      * siparişler döner, verilmezse kullanıcının tüm mağazalardaki
      * siparişleri (en yeni önce).
      */
-    public function detailed(Request $request, User $user)
+    public function detailed(ListUserOrdersRequest $request, User $user)
     {
-        $data = $request->validate([
-            'store_id' => ['nullable', 'exists:stores,id'],
-        ]);
+        $data = $request->validated();
 
         $orders = $user->orders()
             ->with(['store', 'orderItems.product.category'])

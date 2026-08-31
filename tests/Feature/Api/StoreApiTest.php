@@ -92,7 +92,7 @@ class StoreApiTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
-    public function test_store_products_returns_empty_for_nonexistent_category(): void
+    public function test_store_products_rejects_nonexistent_category(): void
     {
         $store = Store::factory()->create();
         $category = Category::factory()->create(['slug' => 'pantolon']);
@@ -101,10 +101,11 @@ class StoreApiTest extends TestCase
             'category_id' => $category->id,
         ]);
 
-        // Olmayan bir kategori slug'ı ile boş dönmeli
+        // Olmayan bir kategori slug'ı artık sessizce boş dönmüyor,
+        // StoreProductsRequest'teki exists:categories,slug kuralı 422 veriyor.
         $response = $this->getJson("/api/stores/{$store->id}/products?category=olmayan-kategori");
 
-        $response->assertStatus(200)
-            ->assertJsonCount(0, 'data');
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('category');
     }
 }
