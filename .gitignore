@@ -31,3 +31,6 @@ recommender/venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# Gerçek veritabanı yedekleri — repo sadece şema/kod içermeli, veri içermemeli
+/database/backups/
