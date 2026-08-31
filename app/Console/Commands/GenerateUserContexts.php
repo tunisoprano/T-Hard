@@ -27,6 +27,10 @@ class GenerateUserContexts extends Command
                 $generator->generate($user, $store);
                 $bar->advance();
             }
+
+            // Mağaza dosyalarının hepsi tazelendi, şimdi bu kullanıcının
+            // ana dosyasını (tüm mağazaların birleşimi) yeniden üret.
+            $generator->regenerateMaster($user);
         }
 
         $bar->finish();

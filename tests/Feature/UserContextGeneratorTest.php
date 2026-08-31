@@ -73,4 +73,31 @@ class UserContextGeneratorTest extends TestCase
 
         $this->assertNull($generator->read($user, $store));
     }
+
+    public function test_regenerate_master_combines_all_store_files_into_one(): void
+    {
+        $storeA = Store::factory()->create();
+        $storeB = Store::factory()->create();
+        $user = User::factory()->create(['store_id' => $storeA->id]);
+
+        $generator = app(UserContextGenerator::class);
+        $generator->generate($user, $storeA);
+        $generator->generate($user, $storeB);
+
+        $generator->regenerateMaster($user);
+        $master = $generator->readMaster($user);
+
+        Storage::disk('local')->assertExists($generator->masterPath($user));
+        $this->assertStringContainsString($storeA->name, $master);
+        $this->assertStringContainsString($storeB->name, $master);
+    }
+
+    public function test_read_master_returns_null_when_never_generated(): void
+    {
+        $user = User::factory()->create();
+
+        $generator = app(UserContextGenerator::class);
+
+        $this->assertNull($generator->readMaster($user));
+    }
 }

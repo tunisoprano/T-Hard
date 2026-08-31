@@ -118,13 +118,15 @@ class UserContextGenerator
     }
 
     /**
-     * Platform geneli (mağaza seçilmemiş) chatbot için: kullanıcının
-     * TÜM mağazalardaki context dosyalarını, dosya sistemini tarayarak
-     * (Store tablosuna DB sorgusu atmadan) bulup birleştirir.
+     * Kullanıcının TÜM mağazalardaki context dosyalarını, dosya sistemini
+     * tarayarak (Store tablosuna DB sorgusu atmadan) bulup birleştirir.
+     * Bu tarama SADECE ana dosyayı (bkz. regenerateMaster) üretirken
+     * çalışır — chatbot her mesajda bunu değil, önceden üretilmiş ana
+     * dosyayı (readMaster) okur.
      *
      * @return array<int, string> her elemanı bir mağazanın markdown içeriği
      */
-    public function readAllForUser(User $user): array
+    private function scanAllStoreFiles(User $user): array
     {
         $contents = [];
 
@@ -137,6 +139,41 @@ class UserContextGenerator
         }
 
         return $contents;
+    }
+
+    /**
+     * Kullanıcı başına, mağazadan bağımsız TEK bir "ana dosya" üretir —
+     * o kullanıcının tüm mağazalardaki context dosyalarının birleşimi.
+     *
+     * Neden ayrı bir dosya (mağaza dosyalarını her seferinde tarayıp
+     * birleştirmek yerine): platform geneli chatbot her mesajda bu
+     * birleştirmeyi tekrar tekrar yapmasın diye — iş önceden (context
+     * üretimi sırasında) yapılıp tek bir dosyaya donduruluyor, okuma
+     * tarafı artık sadece bu dosyayı okuyor, hiçbir tarama yapmıyor.
+     */
+    public function regenerateMaster(User $user): void
+    {
+        $contents = $this->scanAllStoreFiles($user);
+
+        $combined = $contents !== []
+            ? implode("\n\n---\n\n", $contents)
+            : 'Bu kullanıcı için henüz hiçbir mağazada context dosyası üretilmemiş.';
+
+        Storage::disk('local')->put($this->masterPath($user), $combined);
+    }
+
+    public function masterPath(User $user): string
+    {
+        return "user-contexts/{$user->id}.md";
+    }
+
+    public function readMaster(User $user): ?string
+    {
+        $path = $this->masterPath($user);
+
+        return Storage::disk('local')->exists($path)
+            ? Storage::disk('local')->get($path)
+            : null;
     }
 
     /**
