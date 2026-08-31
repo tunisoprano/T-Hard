@@ -135,12 +135,12 @@ class ChatApiTest extends TestCase
     }
 
     /**
-     * Prompt oluşturma metodları private olduğu için (ve StreamedResponse
-     * callback'i test client'ında hiç çalışmadığı için — bkz. yukarıdaki
-     * not), bunları Reflection ile doğrudan çağırıp context dosyasının
-     * gerçekten prompt'a gömüldüğünü kanıtlıyoruz. DB'de hiçbir sipariş/
-     * öneri kaydı YOK — eğer prompt DB'ye gidiyor olsaydı bu içerik asla
-     * çıkmazdı, sadece elle yazdığımız context dosyasından gelebilir.
+     * Prompt oluşturma mantığı artık ChatPromptBuilder servisinde, public
+     * bir metod olarak yaşıyor — Reflection'a gerek yok, servisi doğrudan
+     * çağırıp context dosyasının gerçekten prompt'a gömüldüğünü kanıtlıyoruz.
+     * DB'de hiçbir sipariş/öneri kaydı YOK — eğer prompt DB'ye gidiyor
+     * olsaydı bu içerik asla çıkmazdı, sadece elle yazdığımız context
+     * dosyasından gelebilir.
      */
     public function test_store_prompt_is_built_from_context_file_not_live_db(): void
     {
@@ -153,14 +153,19 @@ class ChatApiTest extends TestCase
             "# Kullanıcı Bağlamı\nBenzersizTestCumlesiXYZ123"
         );
 
-        $controller = app(\App\Http\Controllers\Api\ChatController::class);
-        $method = new \ReflectionMethod($controller, 'buildStorePrompt');
-        $method->setAccessible(true);
-        $prompt = $method->invoke($controller, $store, $user);
+        $promptBuilder = app(\App\Services\ChatPromptBuilder::class);
+        $prompt = $promptBuilder->build($user, $store);
 
         $this->assertStringContainsString('BenzersizTestCumlesiXYZ123', $prompt);
     }
 
+    /**
+     * Platform geneli prompt artık dosya sistemi taranarak değil, önceden
+     * üretilmiş TEK ana dosyadan (bkz. UserContextGenerator::regenerateMaster)
+     * okunuyor. Bu yüzden mağaza dosyalarını yazdıktan sonra ana dosyayı
+     * da elle üretmemiz gerekiyor — gerçek akışta bunu context:generate
+     * komutu veya checkout sonrası OrderService yapıyor.
+     */
     public function test_personal_prompt_combines_all_of_the_users_store_context_files(): void
     {
         $storeA = Store::factory()->create();
@@ -170,11 +175,10 @@ class ChatApiTest extends TestCase
         $generator = app(\App\Services\UserContextGenerator::class);
         Storage::disk('local')->put($generator->path($user, $storeA), 'MagazaA_BenzersizIcerik');
         Storage::disk('local')->put($generator->path($user, $storeB), 'MagazaB_BenzersizIcerik');
+        $generator->regenerateMaster($user);
 
-        $controller = app(\App\Http\Controllers\Api\ChatController::class);
-        $method = new \ReflectionMethod($controller, 'buildPersonalPrompt');
-        $method->setAccessible(true);
-        $prompt = $method->invoke($controller, $user);
+        $promptBuilder = app(\App\Services\ChatPromptBuilder::class);
+        $prompt = $promptBuilder->build($user, null);
 
         $this->assertStringContainsString('MagazaA_BenzersizIcerik', $prompt);
         $this->assertStringContainsString('MagazaB_BenzersizIcerik', $prompt);
