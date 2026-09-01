@@ -50,7 +50,7 @@ class UserContextGeneratorTest extends TestCase
         $this->assertStringContainsString('Spor & Outdoor', $markdown);
         $this->assertStringContainsString('toplam 3 adet', $markdown);
 
-        Storage::disk('local')->assertExists($generator->path($user, $store));
+        Storage::disk('local')->assertExists("user-contexts/{$store->id}/{$user->id}.md");
     }
 
     public function test_users_without_orders_get_a_file_saying_so_instead_of_being_skipped(): void
@@ -87,7 +87,7 @@ class UserContextGeneratorTest extends TestCase
         $generator->regenerateMaster($user);
         $master = $generator->readMaster($user);
 
-        Storage::disk('local')->assertExists($generator->masterPath($user));
+        Storage::disk('local')->assertExists("user-contexts/{$user->id}.md");
         $this->assertStringContainsString($storeA->name, $master);
         $this->assertStringContainsString($storeB->name, $master);
     }

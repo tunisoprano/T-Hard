@@ -103,7 +103,7 @@ class UserContextGenerator
         Storage::disk('local')->put($this->path($user, $store), $markdown);
     }
 
-    public function path(User $user, Store $store): string
+    private function path(User $user, Store $store): string
     {
         return "user-contexts/{$store->id}/{$user->id}.md";
     }
@@ -162,7 +162,7 @@ class UserContextGenerator
         Storage::disk('local')->put($this->masterPath($user), $combined);
     }
 
-    public function masterPath(User $user): string
+    private function masterPath(User $user): string
     {
         return "user-contexts/{$user->id}.md";
     }

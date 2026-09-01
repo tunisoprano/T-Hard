@@ -163,7 +163,7 @@ class CartApiTest extends TestCase
         ])->assertOk();
 
         $generator = app(UserContextGenerator::class);
-        Storage::disk('local')->assertExists($generator->path($user, $store));
+        Storage::disk('local')->assertExists("user-contexts/{$store->id}/{$user->id}.md");
 
         $content = $generator->read($user, $store);
         $this->assertStringContainsString('Test Ürünü', $content);
@@ -193,7 +193,7 @@ class CartApiTest extends TestCase
         $generator = app(UserContextGenerator::class);
         $markdown = "## Bu Mağaza İçin Önerilen Ürünler\n\n"
             ."- Test Önerisi (Test Kategori, 199.99 TL) [#{$product->id}]";
-        Storage::disk('local')->put($generator->path($user, $store), $markdown);
+        Storage::disk('local')->put("user-contexts/{$store->id}/{$user->id}.md", $markdown);
 
         $response = $this->getJson("/api/cart/recommendations?user_id={$user->id}&store_id={$store->id}");
 

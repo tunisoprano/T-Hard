@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\OllamaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -11,14 +12,15 @@ use Tests\TestCase;
 /**
  * Chat API'nin validation ve hata davranışı testleri.
  *
- * NOT: Chatbot'un gerçek LLM cevabını test ETMIYORUZ — çünkü:
+ * NOT: Gerçek Ollama'ya İSTEK ATMIYORUZ — çünkü:
  * 1. Ollama her zaman açık olmayabilir (CI/CD ortamında kesinlikle olmaz)
  * 2. LLM cevapları deterministik değil (aynı soruya farklı cevap verebilir)
  * 3. LLM cevap süresi çok uzun (test suite'i yavaşlatır)
  *
- * Bunun yerine: doğru istek yapısı gönderildiğinde validation'ın geçtiğini,
- * yanlış istek yapısında 422 Unprocessable Entity döndüğünü test ediyoruz.
- * Bu, "controller katmanı doğru çalışıyor mu?" sorusunu cevaplar.
+ * Validation testlerinde OllamaService hiç çağrılmaz (422 validation'da
+ * durur). Gerçek 200 senaryosunda ise OllamaService'i mock'layıp sahte
+ * bir cevap döndürüyoruz — böylece controller/resource akışını Ollama'ya
+ * hiç gitmeden test edebiliyoruz.
  */
 class ChatApiTest extends TestCase
 {
@@ -114,24 +116,29 @@ class ChatApiTest extends TestCase
             ->assertJsonValidationErrors('message');
     }
 
-    public function test_chat_accepts_valid_store_id_as_optional(): void
+    public function test_chat_accepts_valid_store_id_and_returns_assistant_message(): void
     {
         $store = Store::factory()->create();
         $user = User::factory()->create(['store_id' => $store->id]);
 
-        // store_id nullable olduğu için, var olan bir store_id ile
-        // validation geçmeli. Endpoint artık StreamedResponse döndürüyor
-        // (streaming) — bu yüzden status() değil, ham getStatusCode()
-        // kullanıyoruz; başlıklar (dolayısıyla 200) callback çalışmadan
-        // hemen gönderildiği için Ollama kapalı olsa bile burada hâlâ 200
-        // görürüz, önemli olan 422 (validation hatası) dönmediğini görmek.
+        // OllamaService'i mock'luyoruz — gerçek Ollama'ya hiç gitmiyoruz,
+        // sahte bir cevap döndürüyor. Böylece 200 + doğru JSON şeklini
+        // (ChatMessageResource) deterministik şekilde test edebiliyoruz.
+        $this->mock(OllamaService::class, function ($mock) {
+            $mock->shouldReceive('chat')->once()->andReturn('SahteAsistanCevabiXYZ');
+        });
+
         $response = $this->postJson('/api/chat', [
             'user_id' => $user->id,
             'message' => 'Merhaba',
             'store_id' => $store->id,
         ]);
 
-        $this->assertNotEquals(422, $response->baseResponse->getStatusCode());
+        $response->assertStatus(200)
+            ->assertJson([
+                'role' => 'assistant',
+                'content' => 'SahteAsistanCevabiXYZ',
+            ]);
     }
 
     /**
@@ -149,7 +156,7 @@ class ChatApiTest extends TestCase
 
         $generator = app(\App\Services\UserContextGenerator::class);
         Storage::disk('local')->put(
-            $generator->path($user, $store),
+            "user-contexts/{$store->id}/{$user->id}.md",
             "# Kullanıcı Bağlamı\nBenzersizTestCumlesiXYZ123"
         );
 
@@ -173,8 +180,8 @@ class ChatApiTest extends TestCase
         $user = User::factory()->create(['store_id' => $storeA->id]);
 
         $generator = app(\App\Services\UserContextGenerator::class);
-        Storage::disk('local')->put($generator->path($user, $storeA), 'MagazaA_BenzersizIcerik');
-        Storage::disk('local')->put($generator->path($user, $storeB), 'MagazaB_BenzersizIcerik');
+        Storage::disk('local')->put("user-contexts/{$storeA->id}/{$user->id}.md", 'MagazaA_BenzersizIcerik');
+        Storage::disk('local')->put("user-contexts/{$storeB->id}/{$user->id}.md", 'MagazaB_BenzersizIcerik');
         $generator->regenerateMaster($user);
 
         $promptBuilder = app(\App\Services\ChatPromptBuilder::class);

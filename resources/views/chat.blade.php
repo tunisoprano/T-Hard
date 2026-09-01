@@ -257,25 +257,12 @@
                     return;
                 }
 
-                // Cevap artık tek seferde değil, parça parça (stream) geliyor —
-                // her parça geldikçe balonun içeriğine ekliyoruz.
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let firstChunk = true;
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    if (firstChunk) {
-                        botBubble.className = 'msg bot';
-                        botBubble.textContent = '';
-                        firstChunk = false;
-                    }
-
-                    botBubble.textContent += decoder.decode(value, { stream: true });
-                    messagesEl.scrollTop = messagesEl.scrollHeight;
-                }
+                // Cevap artık streaming değil — Ollama tam cevabı üretene
+                // kadar bekleyip tek seferde JSON olarak alıyoruz.
+                const data = await response.json();
+                botBubble.className = 'msg bot';
+                botBubble.textContent = data.content;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
             } catch (err) {
                 botBubble.className = 'msg bot';
                 botBubble.textContent = 'Sunucuya ulaşılamadı: ' + err.message;
