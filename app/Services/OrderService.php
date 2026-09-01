@@ -55,18 +55,6 @@ class OrderService
             return $order;
         });
 
-        // Context dosyasını burada, transaction TAMAMEN bittikten (yani
-        // sipariş kalemleri de yazıldıktan) sonra güncelliyoruz. Bunu bir
-        // Order "created" model event'ine bağlamadık çünkü o event, Order
-        // satırı oluşur oluşmaz (kalemler henüz eklenmeden) tetiklenir —
-        // context dosyası siparişin içeriğini eksik/boş görürdü.
-        $this->contextGenerator->generate($order->user, $order->store);
-
-        // Bu mağazanın dosyası değişti, dolayısıyla kullanıcının TÜM
-        // mağazaların birleşimi olan ana dosyası da bayatladı — onu da
-        // hemen tazeliyoruz (platform geneli chatbot bunu okuyor).
-        $this->contextGenerator->regenerateMaster($order->user);
-
         return $order;
     }
 }

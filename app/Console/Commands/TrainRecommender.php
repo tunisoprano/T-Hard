@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\TrainRecommenderJob;
 use Illuminate\Console\Command;
 use Symfony\Component\Process\Process;
 
@@ -9,10 +10,11 @@ class TrainRecommender extends Command
 {
     /**
      * Komutun terminalde nasıl çağrılacağı.
+     * --sync flag'i: Job'a atmadan doğrudan (senkron) çalıştırır.
      *
      * @var string
      */
-    protected $signature = 'recommender:train';
+    protected $signature = 'recommender:train {--sync : Kuyruğa atmadan doğrudan çalıştır}';
 
     /**
      * php artisan list yazdığımızda görünecek açıklama.
@@ -26,7 +28,22 @@ class TrainRecommender extends Command
      */
     public function handle()
     {
-        $this->info('🧠 Öneri modeli eğitimi başlatılıyor...');
+        if ($this->option('sync')) {
+            return $this->runSync();
+        }
+
+        TrainRecommenderJob::dispatch();
+        $this->info('🐰 Eğitim işi RabbitMQ kuyruğuna gönderildi. Worker arka planda çalıştıracak.');
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Eski davranış: Python'u doğrudan çalıştır (test/debug için).
+     */
+    private function runSync(): int
+    {
+        $this->info('🧠 Öneri modeli eğitimi başlatılıyor (senkron)...');
         $this->line('Çalışma dizini: ' . base_path('recommender'));
 
         // Symfony Process ile komutu tanımlıyoruz. 

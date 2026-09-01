@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Observers\OrderObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
+#[ObservedBy([OrderObserver::class])]
 class Order extends Model
 {
     use HasFactory;
@@ -32,7 +35,3 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 }
-///plugin marketplace add alirezarezvani/claude-skills
-///plugin install engineering-skills@claude-code-skills
-///plugin install engineering-advanced-skills@claude-code-skills
-///plugin install skill-security-auditor@claude-code-skills
