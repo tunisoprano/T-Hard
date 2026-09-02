@@ -46,11 +46,13 @@ class TrainRecommender extends Command
         $this->info('🧠 Öneri modeli eğitimi başlatılıyor (senkron)...');
         $this->line('Çalışma dizini: ' . base_path('recommender'));
 
-        // Symfony Process ile komutu tanımlıyoruz. 
-        // Not: Kendi venv'i içindeki python'ı kullanıyoruz.
-        $process = Process::fromShellCommandline(
-            'OPENBLAS_NUM_THREADS=1 venv/bin/python train.py'
-        );
+        // Symfony Process ile komutu tanımlıyoruz.
+        // Not: Python yolu config'ten geliyor — lokalde proje içindeki venv,
+        // Docker'da /opt/venv (bkz. config/services.php).
+        $process = Process::fromShellCommandline(sprintf(
+            'OPENBLAS_NUM_THREADS=1 %s train.py',
+            escapeshellarg(config('services.recommender.python'))
+        ));
 
         // Komutun çalışacağı klasörü ayarlıyoruz
         $process->setWorkingDirectory(base_path('recommender'));

@@ -34,9 +34,10 @@ class TrainRecommenderJob implements ShouldQueue
     {
         Log::info('🧠 [Job] Öneri modeli eğitimi başlatılıyor...');
 
-        $process = Process::fromShellCommandline(
-            'OPENBLAS_NUM_THREADS=1 venv/bin/python train.py'
-        );
+        $process = Process::fromShellCommandline(sprintf(
+            'OPENBLAS_NUM_THREADS=1 %s train.py',
+            escapeshellarg(config('services.recommender.python'))
+        ));
 
         $process->setWorkingDirectory(base_path('recommender'));
         $process->setTimeout(null);

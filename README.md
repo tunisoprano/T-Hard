@@ -56,15 +56,69 @@ verisi içermez.
 |---|---|
 | Backend / API | Laravel 13, PostgreSQL 16 |
 | Öneri motoru | Python 3.12, `implicit` (ALS) |
-| Chatbot | Ollama, Qwen2.5 7B Instruct (tamamen lokal, streaming) |
+| Chatbot | Ollama, Qwen2.5 7B Instruct (tamamen lokal) |
 | Semantik arama | Ollama, bge-m3 embedding (1024 boyut, çok dilli) |
 | Frontend | Saf HTML/CSS/vanilla JS (build adımı yok) |
-| Test | PHPUnit (29 test, SQLite in-memory) |
+| Test | PHPUnit (49 test, SQLite in-memory) |
 
-## Kurulum
+## Docker ile kurulum (önerilen)
+
+Tek ön koşul: **Docker Desktop**. Postgres, RabbitMQ, Ollama, Python ve PHP'yi
+tek tek kurmaya gerek yok — hepsi container olarak geliyor.
+
+```bash
+docker compose up -d --build
+```
+
+İlk çalıştırmada imaj derlenir ve Ollama modelleri indirilir (~6 GB), bu
+yüzden ilk açılış uzun sürer. Model indirmenin bitişini izlemek için:
+
+```bash
+docker compose logs -f ollama-init
+```
+
+Hazır olunca: **http://localhost:8080/chat** ve **http://localhost:8080/magaza/1**
+
+| Servis | Ne yapar | Adres |
+| --- | --- | --- |
+| `nginx` | Web sunucusu | http://localhost:8080 |
+| `app` | Laravel (PHP-FPM), migration + seed'i o çalıştırır | — |
+| `queue-worker` | RabbitMQ kuyruğundaki işleri işler | — |
+| `scheduler` | Laravel zamanlayıcı (crontab'a gerek yok) | — |
+| `postgres` | Veritabanı | localhost:5433 |
+| `rabbitmq` | Kuyruk + yönetim arayüzü (t_hard/secret) | http://localhost:15673 |
+| `ollama` | Lokal LLM sunucusu | localhost:11435 |
+| `ollama-init` | Modelleri bir kereliğine indirir, sonra kapanır | — |
+
+Host portları bilerek kaydırıldı (5433/5673/15673/11435): bu makinede
+Homebrew ile kurulu Postgres/RabbitMQ/Ollama standart portları kullanıyor,
+Docker onlarla çakışmasın diye.
+
+**Veri:** `database/backups/` içinde bir `.dump` varsa Postgres ilk kurulumda
+onu otomatik geri yükler (demo verisiyle birebir aynı ortam). Yoksa şema
+migration ile kurulur ve seeder sentetik veri üretir.
+
+Sık kullanılan komutlar:
+
+```bash
+docker compose exec app php artisan test          # testler
+docker compose exec app php artisan products:embed # embedding üret (kuyruğa atar)
+docker compose exec app php artisan recommender:train --sync  # modeli hemen eğit
+docker compose logs -f queue-worker                # worker ne yapıyor
+docker compose down                                # durdur (veri kalır)
+docker compose down -v                             # durdur + tüm veriyi sil
+```
+
+> **Performans notu:** Apple Silicon'da container'lar Metal GPU'ya erişemez,
+> yani container içindeki Ollama modeli CPU'da çalışır ve host'a göre belirgin
+> şekilde yavaştır. Sunum/demo sırasında hız önemliyse, host'ta çalışan
+> Ollama'ya bağlanmak için `docker-compose.yml`'deki `OLLAMA_URL` değerini
+> `http://host.docker.internal:11434` yapmak yeterli.
+
+## Kurulum (Docker'sız, doğrudan makinede)
 
 Ön koşullar: PHP 8.4+, Composer, Node.js, PostgreSQL 16, Python 3.12,
-[Ollama](https://ollama.com).
+RabbitMQ, [Ollama](https://ollama.com).
 
 ```bash
 # Bağımlılıklar
@@ -83,7 +137,8 @@ php artisan migrate:fresh --seed
 cd recommender
 python3.12 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt              # çalışma zamanı paketleri
+# pip install -r requirements-notebook.txt  # train.ipynb'yi de açacaksan
 OPENBLAS_NUM_THREADS=1 python train.py
 cd ..
 
@@ -103,7 +158,7 @@ herd link
 ## Kullanım
 
 - `http://<proje-adresi>/chat` — platform geneli, kişisel öneri chatbot'u
-  (streaming cevap) + tüm mağazalarda semantik ürün arama
+  + tüm mağazalarda semantik ürün arama
 - `http://<proje-adresi>/magaza/{1-4}` — mağaza vitrini + mağaza-özel
   chatbot + seçili kullanıcının tüm mağazalardaki sipariş geçmişi + o
   mağazaya özel semantik arama

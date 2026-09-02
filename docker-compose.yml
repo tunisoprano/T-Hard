@@ -1,0 +1,219 @@
+# ============================================================================
+# T-Hard — tüm sistem tek komutla:  docker compose up -d
+#
+# Servisler:
+#   nginx        → web sunucusu           (http://localhost:8080)
+#   app          → Laravel (PHP-FPM)
+#   queue-worker → RabbitMQ kuyruğunu dinler (context/embedding/eğitim işleri)
+#   scheduler    → Laravel zamanlayıcı (gece 03:00 model eğitimi)
+#   postgres     → veritabanı            (host'tan: localhost:5433)
+#   rabbitmq     → kuyruk + yönetim UI   (http://localhost:15673, guest/guest)
+#   ollama       → LLM sunucusu          (host'tan: localhost:11435)
+#   ollama-init  → tek seferlik: modelleri indirir
+#
+# NOT: Host portları bilerek kaydırıldı (5433/5673/15673/11435) — bu makinede
+# Homebrew ile kurulu Postgres, RabbitMQ ve Ollama zaten standart portları
+# kullanıyor, çakışmasın diye.
+# ============================================================================
+
+x-app-env: &app-env
+  APP_ENV: local
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:8080
+
+  # --- Laravel'in veritabanı değişkenleri ---
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_DATABASE: t_hard
+  DB_USERNAME: t_hard
+  DB_PASSWORD: secret
+
+  # --- Python öneri motorunun (recommender/train.py) değişkenleri ---
+  # train.py DB_NAME/DB_USER isimlerini okuyor, Laravel ise
+  # DB_DATABASE/DB_USERNAME. DB_HOST/DB_PORT/DB_PASSWORD ortak.
+  DB_NAME: t_hard
+  DB_USER: t_hard
+
+  QUEUE_CONNECTION: rabbitmq
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+  # Bilerek "guest" DEĞİL: RabbitMQ'da guest hesabı varsayılan olarak sadece
+  # localhost'tan bağlanabiliyor (loopback_users kısıtı). Container'lar arası
+  # bağlantı localhost sayılmadığı için guest ile giriş reddedilirdi.
+  RABBITMQ_USER: t_hard
+  RABBITMQ_PASSWORD: secret
+  RABBITMQ_VHOST: /
+
+  # Bilerek container'daki `ollama` servisi DEĞİL, host.docker.internal:
+  # Apple Silicon'da container'lar Metal GPU'ya erişemiyor, bu yüzden
+  # container içi Ollama CPU'da çalışıyor ve bir chat cevabı ~1:38 sürüyor
+  # (ölçüldü). Host'ta (Homebrew ile) çalışan Ollama GPU kullanıyor ve aynı
+  # cevap ~23sn'de geliyor. `ollama`/`ollama-init` servisleri projenin
+  # tamamen container'da da çalışabildiğini göstermek için duruyor — demo
+  # hızı için host'a yönlendiriyoruz. Host'ta Ollama kurulu/açık değilse
+  # aşağıyı tekrar `http://ollama:11434` yap.
+  OLLAMA_URL: http://host.docker.internal:11434
+  OLLAMA_MODEL: qwen2.5:7b-instruct
+  OLLAMA_EMBEDDING_MODEL: bge-m3
+
+  # Python yorumlayıcısının yolu. İmajda venv /opt/venv'e kuruluyor (proje
+  # klasörü bind-mount edildiği için oraya kurulamaz) — bkz. docker/php/Dockerfile
+  RECOMMENDER_PYTHON: /opt/venv/bin/python
+
+  CACHE_STORE: database
+  SESSION_DRIVER: database
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  image: t-hard/app:latest
+  volumes:
+    # Kaynak kodu bind-mount: hem canlı düzenleme için, hem de app ile
+    # queue-worker'ın AYNI storage/app/private/user-contexts klasörünü
+    # paylaşması için (worker yazıyor, chatbot okuyor — ayrı olsalardı
+    # chatbot güncel context'i hiç göremezdi).
+    - .:/var/www/html
+  extra_hosts:
+    # host.docker.internal'ı garantiye al: Docker Desktop'ta zaten otomatik
+    # geliyor ama colima gibi alternatiflerde bu eşleme olmayabiliyor.
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------- web -----
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  # ------------------------------------------------------- uygulama ---------
+  app:
+    <<: *app-base
+    environment:
+      <<: *app-env
+      # Migration/seed SADECE burada çalışsın — üç container aynı anda
+      # migrate çalıştırırsa birbirine girer.
+      RUN_MIGRATIONS: "true"
+
+  # Kuyruktaki ağır işleri yapan worker. Docker'ın restart politikası
+  # sayesinde çökerse kendi kendine ayağa kalkıyor — elle başlatılan
+  # `queue:work`in sessizce ölme sorunu böylece ortadan kalkıyor.
+  queue-worker:
+    <<: *app-base
+    environment: *app-env
+    command:
+      - php
+      - artisan
+      - queue:work
+      - rabbitmq
+      - --tries=3
+      - --timeout=1810   # TrainRecommenderJob'ın kendi timeout'u 1800 sn
+      - --sleep=3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  # Laravel zamanlayıcı. `schedule:work` her dakika kendi kendine tetikleniyor,
+  # yani işletim sistemi seviyesinde crontab kurmaya gerek kalmıyor.
+  scheduler:
+    <<: *app-base
+    environment: *app-env
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  # ------------------------------------------------------- veritabanı -------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: t_hard
+      POSTGRES_USER: t_hard
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # İlk kurulumda çalışan script'ler
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      # Varsa pg_dump snapshot'ı buradan geri yüklenir (bkz. init script)
+      - ./database/backups:/snapshots:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U t_hard -d t_hard"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ------------------------------------------------------------ kuyruk ------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: t_hard
+      RABBITMQ_DEFAULT_PASS: secret
+    ports:
+      - "5673:5672"     # AMQP
+      - "15673:15672"   # Yönetim arayüzü (t_hard / secret)
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+    restart: unless-stopped
+
+  # --------------------------------------------------------------- LLM ------
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11435:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+  # Modelleri bir kereliğine indirir, sonra kapanır. Modeller named volume'da
+  # kaldığı için sonraki açılışlarda tekrar indirmez.
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "[ollama-init] Ollama sunucusu bekleniyor..."
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        echo "[ollama-init] qwen2.5:7b-instruct indiriliyor (~4.7 GB)..."
+        ollama pull qwen2.5:7b-instruct
+        echo "[ollama-init] bge-m3 indiriliyor (~1.2 GB)..."
+        ollama pull bge-m3
+        echo "[ollama-init] Modeller hazır."
+    restart: "no"
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  ollama-models:

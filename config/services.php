@@ -41,4 +41,13 @@ return [
         'embedding_model' => env('OLLAMA_EMBEDDING_MODEL', 'bge-m3'),
     ],
 
+    'recommender' => [
+        // ALS eğitim script'ini çalıştıracak Python yorumlayıcısı.
+        // Varsayılan, recommender/ klasörüne göre göreli: lokal kurulumda
+        // (Herd) venv proje içinde duruyor. Docker'da ise venv /opt/venv'e
+        // kuruluyor (proje klasörü bind-mount edildiği için içine kurulamaz),
+        // orada bu değişken mutlak yolla eziliyor.
+        'python' => env('RECOMMENDER_PYTHON', 'venv/bin/python'),
+    ],
+
 ];

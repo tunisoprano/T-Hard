@@ -1,0 +1,9 @@
+# train.ipynb (analiz/grafik defteri) için ek paketler.
+# Uygulamanın çalışması için GEREKMEZ — bu yüzden Docker imajına dahil
+# edilmiyorlar, sadece lokal analiz yapacaksan kur:
+#   pip install -r requirements-notebook.txt
+-r requirements.txt
+
+jupyter
+pandas
+matplotlib

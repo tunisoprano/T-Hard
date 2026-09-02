@@ -1,0 +1,33 @@
+# Docker build context'ine girmemesi gerekenler.
+# vendor/ ve venv/ bilerek dışarıda: bunlar host'ta macOS için kurulmuş
+# binary'ler içeriyor, imajın içinde Linux için yeniden kurulmaları gerek.
+
+.git
+.gitignore
+.github
+
+vendor
+node_modules
+recommender/venv
+recommender/.ipynb_checkpoints
+**/__pycache__
+
+# Gerçek veri ve sırlar — imaja asla gömülmemeli
+.env
+.env.backup
+.env.production
+database/backups
+storage/app/private/user-contexts
+
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*.php
+
+*.log
+.DS_Store
+.idea
+.vscode
+.phpunit.result.cache
+.phpunit.cache
