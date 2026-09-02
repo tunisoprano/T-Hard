@@ -7,9 +7,12 @@ use App\Http\Requests\CategoryProductsRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Category;
+use App\Services\CategoryService;
 
 class CategoryController extends Controller
 {
+    public function __construct(private CategoryService $categoryService) {}
+
     public function index()
     {
         return CategoryResource::collection(Category::all());
@@ -19,10 +22,7 @@ class CategoryController extends Controller
     {
         $data = $request->validated();
 
-        $products = $category->products()
-            ->with(['category', 'store'])
-            ->when($data['store_id'] ?? null, fn ($query, $storeId) => $query->where('store_id', $storeId))
-            ->get();
+        $products = $this->categoryService->productsFor($category, $data['store_id'] ?? null);
 
         return ProductResource::collection($products);
     }

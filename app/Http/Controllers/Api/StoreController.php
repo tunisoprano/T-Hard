@@ -7,9 +7,12 @@ use App\Http\Requests\StoreProductsRequest;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\StoreResource;
 use App\Models\Store;
+use App\Services\StoreService;
 
 class StoreController extends Controller
 {
+    public function __construct(private StoreService $storeService) {}
+
     public function index()
     {
         return StoreResource::collection(Store::all());
@@ -19,13 +22,7 @@ class StoreController extends Controller
     {
         $data = $request->validated();
 
-        $products = $store->products()
-            ->with(['category', 'store'])
-            ->when($data['category'] ?? null, fn ($query, $slug) => $query->whereHas(
-                'category',
-                fn ($categoryQuery) => $categoryQuery->where('slug', $slug)
-            ))
-            ->get();
+        $products = $this->storeService->productsFor($store, $data['category'] ?? null);
 
         return ProductResource::collection($products);
     }
